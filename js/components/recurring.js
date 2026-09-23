@@ -7,7 +7,7 @@ const RecurringComponent = (function () {
   let cachedData = null;
 
   async function render(container) {
-    cachedData = await BillDeskAPI.getInitialData();
+    cachedData = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
     let schedules = cachedData.recurringSchedules || [];
 
     container.innerHTML = `

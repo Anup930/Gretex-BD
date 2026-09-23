@@ -8,7 +8,7 @@ const PaymentComponent = (function () {
   let cachedData = null;
 
   async function render(container) {
-    cachedData = await BillDeskAPI.getInitialData();
+    cachedData = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
     let cycles = cachedData.billCycles || [];
     let attempts = cachedData.paymentAttempts || [];
     let currentUser = BillDeskAuth.getCurrentUser();

@@ -9,7 +9,7 @@ const AdminComponent = (function () {
   let activeTab = "users";
 
   async function render(container) {
-    cachedData = await BillDeskAPI.getInitialData();
+    cachedData = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
 
     container.innerHTML = `
       <div class="view-header">

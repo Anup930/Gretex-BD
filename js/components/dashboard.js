@@ -5,7 +5,7 @@
 
 const DashboardComponent = (function () {
   async function render(container) {
-    let data = await BillDeskAPI.getInitialData();
+    let data = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
     let cycles = data.billCycles || [];
     let user = BillDeskAuth.getCurrentUser();
 

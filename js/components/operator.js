@@ -8,7 +8,7 @@ const OperatorComponent = (function () {
   let cachedData = null;
 
   async function render(container) {
-    cachedData = await BillDeskAPI.getInitialData();
+    cachedData = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
     let cycles = cachedData.billCycles || [];
 
     // Filter tasks that need operator attention: Incomplete, ReadyForSubmission, or Returned
