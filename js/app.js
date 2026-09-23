@@ -18,7 +18,7 @@ const App = (function () {
     audit: AuditComponent
   };
 
-  function init() {
+  async function init() {
     updateUserInfo();
     updateEnvIndicator();
     bindNavEvents();
@@ -29,6 +29,15 @@ const App = (function () {
     } else {
       hideLoginScreen();
       updateSidebarVisibility();
+
+      // Initialize encrypted data engine for existing session (page refresh / F5)
+      let user = BillDeskAuth.getCurrentUser();
+      if (user && typeof CryptoStore !== "undefined") {
+        await CryptoStore.init({ email: user.email, userId: user.userId });
+      }
+      if (typeof BillDeskDataStore !== "undefined") {
+        await BillDeskDataStore.init();
+      }
       
       // Restore active view on browser refresh (F5) or direct hash link
       let hashView = (location.hash || "").replace(/^#\/?/, "").trim();
@@ -43,6 +52,35 @@ const App = (function () {
       } else {
         navigateToDefaultView();
       }
+    }
+
+    // Subscribe to DataStore sync events for UI indicators
+    if (typeof BillDeskDataStore !== "undefined") {
+      BillDeskDataStore.subscribe(function (event, payload) {
+        let dot = document.getElementById("env-status-dot");
+        let label = document.getElementById("env-status-label");
+        if (event === "sync_start") {
+          if (dot) dot.style.backgroundColor = "#f59e0b";
+          if (label) label.textContent = "Syncing...";
+        } else if (event === "sync_success") {
+          if (dot) dot.style.backgroundColor = "#10b981";
+          if (label) label.textContent = "Live Backend";
+          if (payload && !payload.silent) {
+            showToast("✓ Data synced from Google Sheets (" + (payload.count || 0) + " records)", "success");
+          }
+        } else if (event === "sync_error") {
+          if (dot) dot.style.backgroundColor = "#ef4444";
+          if (label) label.textContent = "Sync Error";
+          if (payload && !payload.silent) {
+            showToast("⚠ Sync failed: " + (payload.error || "Unknown error"), "error");
+          }
+          // Reset indicator after 3 seconds
+          setTimeout(function () {
+            if (dot) dot.style.backgroundColor = "#10b981";
+            if (label) label.textContent = "Live Backend";
+          }, 3000);
+        }
+      });
     }
 
     // Listen for hashchange (e.g. browser back/forward or direct hash navigation)
@@ -282,7 +320,9 @@ const App = (function () {
     // Render component
     let container = document.getElementById("view-container");
     if (container) {
-      container.innerHTML = getSmartLoadingHtml();
+      if (typeof BillDeskDataStore === "undefined" || !BillDeskDataStore.isLoaded) {
+        container.innerHTML = getSmartLoadingHtml();
+      }
       VIEWS[viewName].render(container);
     }
   }

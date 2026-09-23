@@ -75,6 +75,16 @@ const BillDeskAuth = (function () {
           sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(currentUser));
           sessionStorage.setItem(SESSION_TOKEN_KEY, currentToken);
         } catch (e) {}
+
+        // Initialize encrypted storage engine with user credentials
+        if (typeof CryptoStore !== "undefined") {
+          await CryptoStore.init({ email: currentUser.email, userId: currentUser.userId });
+        }
+        // Bootstrap in-memory data store (loads from encrypted cache or fetches from backend)
+        if (typeof BillDeskDataStore !== "undefined") {
+          await BillDeskDataStore.init();
+        }
+
         window.dispatchEvent(new CustomEvent("billdesk-auth-changed", { detail: currentUser }));
         return { success: true, user: currentUser };
       }
@@ -92,13 +102,18 @@ const BillDeskAuth = (function () {
       window.dispatchEvent(new CustomEvent("billdesk-auth-changed", { detail: currentUser }));
     },
 
-    // Logout
+    // Logout — 100% data purge (zero data leakage)
     logout: async function () {
       try {
         if (currentUser) {
           await BillDeskAPI.callAppsScript?.("logout", { email: currentUser.email, token: currentToken });
         }
       } catch (e) {}
+
+      // Wipe encrypted cache + crypto keys (Pillar IV: 100% Sign-Out Purge)
+      if (typeof CryptoStore !== "undefined") CryptoStore.wipeAll();
+      if (typeof BillDeskDataStore !== "undefined") BillDeskDataStore.clear();
+
       currentUser = null;
       currentToken = null;
       try {

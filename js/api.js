@@ -218,7 +218,11 @@ const BillDeskAPI = (function () {
     // Recurring Schedule
     saveSchedule: async function (schedule, actorEmail) {
       if (backendMode === "live") {
-        return await callAppsScript("saveSchedule", { schedule: schedule, actorEmail: actorEmail });
+        let res = await callAppsScript("saveSchedule", { schedule: schedule, actorEmail: actorEmail });
+        if (res && res.success && res.schedule && typeof BillDeskDataStore !== "undefined") {
+          BillDeskDataStore.upsertItem("recurringSchedules", "ScheduleID", res.schedule);
+        }
+        return res;
       }
 
       let db = getLocalDB();
@@ -551,7 +555,13 @@ const BillDeskAPI = (function () {
       }
 
       if (backendMode === "live") {
-        return await callAppsScript("saveMaster", { type: type, data: data, actorEmail: actorEmail });
+        let res = await callAppsScript("saveMaster", { type: type, data: data, actorEmail: actorEmail });
+        if (res && res.success && res.item && typeof BillDeskDataStore !== "undefined") {
+          let entityKey = type.charAt(0).toLowerCase() + type.slice(1);
+          let idCol = type === "Companies" ? "CompanyID" : (type === "Vendors" ? "VendorID" : (type === "Categories" ? "CategoryID" : (type === "RecurringSchedules" ? "ScheduleID" : "BankAccountID")));
+          BillDeskDataStore.upsertItem(entityKey, idCol, res.item);
+        }
+        return res;
       }
 
       let db = getLocalDB();
@@ -583,7 +593,12 @@ const BillDeskAPI = (function () {
 
       if (backendMode === "live") {
         try {
-          return await callAppsScript("importMasters", { type: type, items: items, actorEmail: actorEmail });
+          let res = await callAppsScript("importMasters", { type: type, items: items, actorEmail: actorEmail });
+          if (res && res.success && typeof BillDeskDataStore !== "undefined") {
+            // Trigger background sync to refresh in-memory store cleanly
+            BillDeskDataStore.syncFromCloud(true).catch(function () {});
+          }
+          return res;
         } catch (e) {
           console.warn("Direct importMasters failed, falling back to sequential saveMaster:", e.message);
         }
