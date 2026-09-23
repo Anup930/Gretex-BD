@@ -20,6 +20,12 @@
     </div>
 
     <div class="header-controls">
+      <!-- Cloud Sync Button -->
+      <button class="btn btn-sm btn-secondary" onclick="BillDeskDataStore.forceSync()" id="btn-cloud-sync" title="Sync live database with Google Sheets" style="display:flex; align-items:center; gap:0.4rem; padding: 0.35rem 0.65rem; font-size:0.78rem;">
+        <span>🔄</span>
+        <span>Cloud Sync</span>
+      </button>
+
       <!-- Live / Local Connection Status -->
       <div class="env-indicator" id="env-indicator-btn" onclick="App.toggleEnvMode()" title="Click to toggle between Live Apps Script and Local Storage Mode">
         <div class="status-dot" id="env-status-dot"></div>
@@ -155,6 +161,10 @@
 
   <!-- Excel & CSV Processing Library -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Encrypted Local Cache & 0ms Data Engine -->
+  <script src="js/crypto-store.js"></script>
+  <script src="js/data-store.js"></script>
 
   <!-- Application Scripts -->
   <script src="js/api.js"></script>
