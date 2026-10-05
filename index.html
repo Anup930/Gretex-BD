@@ -34,32 +34,230 @@
     </div>
   </header>
 
-  <!-- Dedicated Login Screen Overlay -->
-  <div id="login-screen" class="login-screen" style="display:none;">
-    <div class="login-card">
-      <div class="login-header">
-        <div class="logo-icon-lg">BD</div>
-        <h2>BillDesk Portal</h2>
-        <p class="login-subtitle">Recurring Payments & Fund Control System</p>
+  <!-- Dedicated 3D Cyber Security Login Screen (Dribbble Anti-Fraud Center Style) -->
+  <div id="login-screen" class="login-screen cyber-theme" style="display:none;">
+    <!-- Cybernetic Ambient Background & Circuit Grid -->
+    <div class="cyber-bg-grid"></div>
+    <div class="cyber-ambient-glow glow-cyan"></div>
+    <div class="cyber-ambient-glow glow-blue"></div>
+
+    <!-- Main Outer Container Frame (Matching Dribbble Shot) -->
+    <div class="cyber-login-container">
+      
+      <!-- LEFT / CENTER: 3D Holographic Security & Anti-Fraud Center Stage -->
+      <div class="cyber-stage-wrapper">
+        <div class="cyber-stage-scene">
+          
+          <!-- Concentric 3D Orbital Pedestal Platform -->
+          <div class="cyber-pedestal-ground">
+            <!-- Outer Glow Track -->
+            <div class="cyber-ring ring-outer">
+              <svg class="circuit-track-svg" viewBox="0 0 420 420">
+                <circle cx="210" cy="210" r="195" class="circuit-track-base"></circle>
+                <circle cx="210" cy="210" r="195" class="circuit-track-pulse"></circle>
+              </svg>
+            </div>
+            
+            <!-- Middle Dashed Orbital Ring -->
+            <div class="cyber-ring ring-middle">
+              <svg class="circuit-track-svg" viewBox="0 0 330 330">
+                <circle cx="165" cy="165" r="150" class="circuit-track-dashed"></circle>
+              </svg>
+            </div>
+
+            <!-- Inner Neon Ring -->
+            <div class="cyber-ring ring-inner-glow"></div>
+            
+            <!-- Circuit Energy Lines on Dark Ground -->
+            <div class="circuit-line line-1"></div>
+            <div class="circuit-line line-2"></div>
+            <div class="circuit-line line-3"></div>
+            <div class="circuit-line line-4"></div>
+
+            <!-- 4 Satellite Orbital Nodes (Matching Dribbble Reference) -->
+            <!-- 1. Mobile App Node (Top-Left) -->
+            <div class="cyber-node node-app" title="Mobile Invoicing & Bills">
+              <div class="node-base-glow"></div>
+              <div class="node-icon-box">
+                <div class="mini-app-screen">
+                  <span>APP</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Telephone Comms Node (Bottom-Left) -->
+            <div class="cyber-node node-phone" title="Vendor Support Desk">
+              <div class="node-base-glow"></div>
+              <div class="node-icon-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-2.2 2.2a15.053 15.053 0 0 1-6.59-6.59l2.2-2.21a.96.96 0 0 0 .25-1A11.36 11.36 0 0 1 8.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- 3. Security Siren Beacon Node (Top-Right) -->
+            <div class="cyber-node node-siren" title="Payment Due Alerts">
+              <div class="node-base-glow"></div>
+              <div class="node-icon-box siren-icon-box">
+                <div class="siren-light"></div>
+                <div class="siren-dome"></div>
+              </div>
+            </div>
+
+            <!-- 4. Security Scanner / Cyber Helm Node (Bottom-Right) -->
+            <div class="cyber-node node-shield" title="Bank & Fund Security">
+              <div class="node-base-glow"></div>
+              <div class="node-icon-box">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  <circle cx="12" cy="11" r="3"></circle>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Central Multi-Tier Light Pedestal -->
+            <div class="central-pedestal-base">
+              <div class="pedestal-disc tier-1"></div>
+              <div class="pedestal-disc tier-2"></div>
+              <div class="pedestal-light-core"></div>
+            </div>
+          </div>
+
+          <!-- Central Floating 3D Crystal Hologram Shield with Lightning Bolt -->
+          <div class="hologram-shield-anchor">
+            <div class="hologram-shield-float">
+              <div class="shield-3d-model">
+                <div class="shield-crystal-face face-front">
+                  <div class="shield-specular-highlight"></div>
+                  <!-- Electric Lightning Bolt Inside Shield -->
+                  <div class="shield-lightning-bolt">
+                    <svg viewBox="0 0 100 130" class="lightning-svg">
+                      <polygon points="56,10 24,70 50,70 42,120 78,55 52,55" class="lightning-poly"></polygon>
+                    </svg>
+                  </div>
+                </div>
+                <!-- Neon Halos and Ground Reflection -->
+                <div class="shield-glow-aura"></div>
+                <div class="shield-ground-reflection"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
-      <div id="login-error-alert" class="login-alert" style="display:none;"></div>
+      <!-- RIGHT: Dark Glassmorphic Login Card -->
+      <div class="cyber-login-card-wrapper">
+        <div class="cyber-login-card" id="login-card-element">
+          
+          <div class="cyber-card-header">
+            <h2>BillDesk Portal</h2>
+            <p class="cyber-subtitle">Recurring Payments & Fund Control System</p>
+          </div>
 
-      <form id="login-form" onsubmit="App.handleLoginSubmit(event)">
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label class="form-label" for="login-email">Work Email</label>
-          <input type="email" id="login-email" class="form-control" placeholder="name@gretexgroup.com" required autofocus>
+          <div id="login-error-alert" class="login-alert cyber-alert" style="display:none;"></div>
+
+          <form id="login-form" onsubmit="App.handleLoginSubmit(event)">
+            <!-- Account / Email Input -->
+            <div class="form-group cyber-field-group">
+              <div class="cyber-input-wrap">
+                <span class="cyber-input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                </span>
+                <input type="email" id="login-email" class="cyber-input" placeholder="Work Email (name@gretex.com)" required autofocus autocomplete="username">
+              </div>
+            </div>
+
+            <!-- Password Input -->
+            <div class="form-group cyber-field-group">
+              <div class="cyber-input-wrap">
+                <span class="cyber-input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </span>
+                <input type="password" id="login-password" class="cyber-input" placeholder="Password" required autocomplete="current-password">
+                <button type="button" class="btn-toggle-pwd cyber-pwd-toggle" id="btn-toggle-pwd" onclick="App.togglePasswordVisibility()" title="Toggle password visibility" aria-label="Toggle password visibility">
+                  <svg id="pwd-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg id="pwd-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Submit Button (Vibrant Electric Blue matching Dribbble shot) -->
+            <button type="submit" id="login-submit-btn" class="cyber-login-btn">
+              <span class="btn-spinner" id="login-btn-spinner" style="display:none;">
+                <div class="three-body three-body-sm">
+                  <div class="three-body__dot"></div>
+                  <div class="three-body__dot"></div>
+                  <div class="three-body__dot"></div>
+                </div>
+              </span>
+              <span class="btn-icon" id="login-btn-icon" style="display:none;"></span>
+              <span class="btn-text" id="login-btn-text">Login</span>
+            </button>
+          </form>
+
+          <div class="cyber-footer-meta">
+            <span>Gretex Corporate Services Ltd • Recurring Control</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quantum Encryption Verification Modal / HUD -->
+    <div id="cyber-verify-modal" class="cyber-verify-overlay" style="display:none;">
+      <div class="cyber-verify-card" id="cyber-verify-card">
+        
+        <!-- Radar Ring & Three-Body Quantum Orbit Loader Frame -->
+        <div class="encryption-loader-box" id="encryption-loader-box">
+          <div class="scanner-radar-pulse"></div>
+          <div class="scanner-corner corner-tl"></div>
+          <div class="scanner-corner corner-tr"></div>
+          <div class="scanner-corner corner-bl"></div>
+          <div class="scanner-corner corner-br"></div>
+          
+          <!-- Uiverse Three-Body Quantum Orbital Animation -->
+          <div class="three-body" id="verify-three-body">
+            <div class="three-body__dot"></div>
+            <div class="three-body__dot"></div>
+            <div class="three-body__dot"></div>
+          </div>
+
+          <!-- Result Indicator Icon Badge (Checkmark for Success / X for Denied) -->
+          <div class="scanner-result-badge" id="scanner-result-badge" style="display:none;">
+            <svg id="badge-icon-success" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <svg id="badge-icon-error" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </div>
         </div>
 
-        <div class="form-group" style="margin-bottom:1.25rem;">
-          <label class="form-label" for="login-password">Password</label>
-          <input type="password" id="login-password" class="form-control" placeholder="Enter your password" required>
+        <!-- Verification Status Labels -->
+        <div class="verify-status-wrap">
+          <div class="verify-status-title" id="verify-status-title">Verifying Your Credentials...</div>
+          <div class="verify-status-desc" id="verify-status-desc">Validating credentials with 256-bit encryption</div>
+          <div class="verify-progress-bar">
+            <div class="verify-progress-fill" id="verify-progress-fill"></div>
+          </div>
         </div>
 
-        <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn">
-          <span>Sign In to BillDesk</span>
-        </button>
-      </form>
+      </div>
     </div>
   </div>
 
@@ -101,6 +299,17 @@
               <span>Payment Queue</span>
             </a>
           </li>
+          <li class="nav-item" id="nav-item-reports" data-capability="CanViewFinance,CanViewReports">
+            <a class="nav-link" data-view="reports">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+                <path d="M3 3v18h18"></path>
+              </svg>
+              <span>Reports</span>
+            </a>
+          </li>
           <li class="nav-item" id="nav-item-fund_report" data-capability="CanViewFinance,CanViewReports">
             <a class="nav-link" data-view="fund_report">
               <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -128,12 +337,21 @@
 
       <!-- Sidebar User Profile & Sign Out Footer -->
       <div class="sidebar-footer" id="sidebar-user-footer">
+        <!-- Auto Sync Countdown Card (Directly above User Profile) -->
+        <div class="sidebar-sync-card" id="sidebar-sync-card" onclick="BillDeskDataStore.forceSync()" title="Auto-syncs every 3 mins. Click to sync now.">
+          <div class="sync-card-status">
+            <span class="sync-live-dot" id="sidebar-sync-dot"></span>
+            <span class="sync-card-title">Backend Sync</span>
+          </div>
+          <div class="sync-card-timer">
+            <span class="sync-countdown-val" id="sync-countdown-timer">03:00</span>
+          </div>
+        </div>
+
         <div class="sidebar-user-card" id="sidebar-user-profile" title="Logged in user profile">
           <div class="sidebar-user-avatar" id="sidebar-user-avatar">A</div>
-          <div class="sidebar-user-info">
-            <div class="sidebar-user-name" id="sidebar-user-name">User</div>
-            <div class="sidebar-user-role" id="sidebar-user-role">Role</div>
-          </div>
+          <span class="sidebar-user-name" id="sidebar-user-name">User</span>
+          <span class="sidebar-user-role" id="sidebar-user-role">Role</span>
         </div>
         <button class="sidebar-signout-btn" onclick="App.logoutUser()" title="Sign out of current account">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -177,6 +395,7 @@
   <script src="js/components/fund_report.js"></script>
   <script src="js/components/admin.js"></script>
   <script src="js/components/audit.js"></script>
+  <script src="js/components/reports.js"></script>
   <script src="js/app.js"></script>
 
 </body>
