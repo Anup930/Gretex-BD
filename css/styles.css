@@ -3217,3 +3217,327 @@ body {
   50% { left: 35%; width: 50%; }
   100% { left: 105%; width: 30%; }
 }
+
+/* ===================================================================
+   MULTI-COLOR AURA FINTECH THEME FOR REPORTS (Dribbble Charts Kit Style)
+   =================================================================== */
+.reports-fintech-canvas {
+  position: relative;
+  border-radius: 24px;
+  padding: 1.75rem;
+  min-height: calc(100vh - 120px);
+  background: #060a14;
+  color: #f8fafc;
+  overflow: hidden;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Multi-color ambient mesh aurora background */
+.reports-fintech-canvas::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background: 
+    radial-gradient(circle at 18% 22%, rgba(16, 185, 129, 0.48) 0%, transparent 45%),
+    radial-gradient(circle at 82% 18%, rgba(6, 182, 212, 0.42) 0%, transparent 42%),
+    radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.42) 0%, transparent 46%),
+    radial-gradient(circle at 25% 80%, rgba(236, 72, 153, 0.32) 0%, transparent 42%),
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.96) 0%, #060913 100%);
+  pointer-events: none;
+  z-index: 0;
+  animation: aurora-mesh-float 16s ease-in-out infinite alternate;
+  filter: blur(24px);
+}
+
+/* Subtle 3D Geometric Polygonal Grid Overlay (Alien Pixels look) */
+.reports-fintech-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 36px 36px, 72px 72px, 72px 72px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.75;
+}
+
+@keyframes aurora-mesh-float {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.06) translate(-2%, 2%); }
+  100% { transform: scale(1) translate(2%, -2%); }
+}
+
+/* Theme variations */
+.reports-fintech-canvas.aura-emerald::before {
+  background: 
+    radial-gradient(circle at 20% 25%, rgba(34, 197, 94, 0.58) 0%, transparent 46%),
+    radial-gradient(circle at 80% 30%, rgba(16, 185, 129, 0.52) 0%, transparent 48%),
+    radial-gradient(circle at 50% 85%, rgba(5, 150, 105, 0.45) 0%, transparent 46%),
+    radial-gradient(circle at 50% 50%, rgba(6, 78, 59, 0.75) 0%, #04100c 100%);
+}
+
+.reports-fintech-canvas.aura-cyber::before {
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(168, 85, 247, 0.52) 0%, transparent 45%),
+    radial-gradient(circle at 80% 25%, rgba(236, 72, 153, 0.48) 0%, transparent 42%),
+    radial-gradient(circle at 60% 80%, rgba(99, 102, 241, 0.48) 0%, transparent 46%),
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.95) 0%, #080b18 100%);
+}
+
+.reports-fintech-canvas.aura-ocean::before {
+  background: 
+    radial-gradient(circle at 20% 25%, rgba(14, 165, 233, 0.52) 0%, transparent 46%),
+    radial-gradient(circle at 80% 25%, rgba(59, 130, 246, 0.48) 0%, transparent 45%),
+    radial-gradient(circle at 50% 75%, rgba(20, 184, 166, 0.42) 0%, transparent 46%),
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.95) 0%, #060e1d 100%);
+}
+
+.reports-canvas-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Aura Switcher Controls */
+.aura-switcher-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  padding: 0.28rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.aura-switcher-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aura-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aura-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.aura-btn.active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+  font-weight: 700;
+}
+
+/* Glassmorphism overrides inside .reports-fintech-canvas */
+.reports-fintech-canvas .reports-hub-hero {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.reports-fintech-canvas .reports-hub-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reports-fintech-canvas .reports-hub-title-group h2 {
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.25);
+}
+
+.reports-fintech-canvas .reports-hub-title-group p {
+  color: #94a3b8;
+}
+
+.reports-fintech-canvas .reports-badge-pill {
+  background: rgba(59, 130, 246, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.reports-fintech-canvas .report-detail-header-card {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
+}
+
+.reports-fintech-canvas .rep-back-btn {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+
+.reports-fintech-canvas .rep-back-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.reports-fintech-canvas .rep-active-titles h2 {
+  color: #ffffff;
+}
+
+.reports-fintech-canvas .rep-active-titles p {
+  color: #94a3b8;
+}
+
+.reports-fintech-canvas .reports-filter-card {
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+}
+
+.reports-fintech-canvas .rep-filter-item label {
+  color: #94a3b8;
+}
+
+.reports-fintech-canvas .form-control {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.reports-fintech-canvas .form-control option {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.reports-fintech-canvas .search-input {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.reports-fintech-canvas .search-input::placeholder {
+  color: #64748b;
+}
+
+.reports-fintech-canvas .rep-card {
+  background: rgba(11, 19, 34, 0.8);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.65);
+}
+
+.reports-fintech-canvas .rep-card-header h3 {
+  color: #f8fafc;
+}
+
+.reports-fintech-canvas .rep-tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.reports-fintech-canvas .funnel-label {
+  color: #cbd5e1;
+}
+
+.reports-fintech-canvas .funnel-val {
+  color: #ffffff;
+}
+
+.reports-fintech-canvas .funnel-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reports-fintech-canvas .rep-legend-grid {
+  color: #cbd5e1;
+}
+
+.reports-fintech-canvas .bar-label {
+  color: #94a3b8;
+}
+
+.reports-fintech-canvas .bar-tooltip {
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.95);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.reports-fintech-canvas .entity-label-col strong {
+  color: #f8fafc;
+}
+
+.reports-fintech-canvas .entity-label-col small {
+  color: #94a3b8;
+}
+
+.reports-fintech-canvas .entity-bar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reports-fintech-canvas .table-card {
+  background: rgba(11, 19, 34, 0.82);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.65);
+}
+
+.reports-fintech-canvas .table-toolbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reports-fintech-canvas .table-toolbar div {
+  color: #ffffff !important;
+}
+
+.reports-fintech-canvas .data-table th {
+  background: rgba(15, 23, 42, 0.7);
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reports-fintech-canvas .data-table td {
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.reports-fintech-canvas .data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.reports-fintech-canvas .data-table code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #38bdf8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.reports-fintech-canvas .badge-light {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.reports-fintech-canvas .reports-bottom-toolbar {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
