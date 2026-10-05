@@ -13,7 +13,7 @@
 
 const BillDeskDataStore = (() => {
   const CACHE_KEY = "billdesk_all_data";
-  const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+  const CACHE_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
   let _allData = null;
   let _isLoaded = false;
