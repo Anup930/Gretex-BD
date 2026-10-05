@@ -218,45 +218,87 @@ const ReportsComponent = (function () {
     }
   }
 
+  let activeAuraTheme = "multi"; // "multi", "emerald", "cyber", "ocean"
+
+  function getAuraClass() {
+    if (activeAuraTheme === "emerald") return "aura-emerald";
+    if (activeAuraTheme === "cyber") return "aura-cyber";
+    if (activeAuraTheme === "ocean") return "aura-ocean";
+    return "";
+  }
+
+  function setAuraTheme(theme) {
+    activeAuraTheme = theme;
+    let root = document.getElementById("reports-fintech-root");
+    if (root) {
+      root.className = `reports-fintech-canvas ${getAuraClass()}`;
+      document.querySelectorAll(".aura-btn").forEach(btn => {
+        if (btn.getAttribute("data-aura") === theme) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+  }
+
+  function getAuraSwitcherHtml() {
+    return `
+      <div class="aura-switcher-bar">
+        <span class="aura-switcher-label">Ambient Aura:</span>
+        <button class="aura-btn ${activeAuraTheme === 'multi' ? 'active' : ''}" data-aura="multi" onclick="ReportsComponent.setAuraTheme('multi')">🌈 Multi-Color</button>
+        <button class="aura-btn ${activeAuraTheme === 'emerald' ? 'active' : ''}" data-aura="emerald" onclick="ReportsComponent.setAuraTheme('emerald')">🟢 Alien Emerald</button>
+        <button class="aura-btn ${activeAuraTheme === 'cyber' ? 'active' : ''}" data-aura="cyber" onclick="ReportsComponent.setAuraTheme('cyber')">🔮 Cyber Violet</button>
+        <button class="aura-btn ${activeAuraTheme === 'ocean' ? 'active' : ''}" data-aura="ocean" onclick="ReportsComponent.setAuraTheme('ocean')">🌊 Electric Cyan</button>
+      </div>
+    `;
+  }
+
   // 1. HUB VIEW: ONLY THE 12 COLORFUL 3D CARDS (Nothing opened below)
   function renderHubView(container, data) {
     container.innerHTML = `
-      <div class="reports-hub-hero" id="reports-hub-cards">
-        <div class="reports-hub-header">
-          <div class="reports-hub-title-group">
-            <div class="reports-badge-pill">
-              <span class="live-dot"></span> CCMS / BILLDESK ENTERPRISE INTELLIGENCE
-            </div>
-            <h2>Reports & Analytics Hub</h2>
-            <p>Generate executive multi-sheet dashboards, board-level presentation decks, and 3D visual spend analytics.</p>
-          </div>
-          <div class="reports-hub-actions">
-            <button class="btn-hub-excel" onclick="ReportsComponent.exportMultiSheetExcel()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
-              Multi-Sheet Excel Dashboard
-            </button>
-            <button class="btn-hub-ppt" onclick="ReportsComponent.exportPresentationDeck()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              Executive PPT Deck (.pptx)
-            </button>
-          </div>
-        </div>
+      <div class="reports-fintech-canvas ${getAuraClass()}" id="reports-fintech-root">
+        <div class="reports-canvas-content">
+          ${getAuraSwitcherHtml()}
 
-        <!-- 3D COLORFUL CARDS GRID (Clicking any card opens that report with 1s loader) -->
-        <div class="reports-3d-grid">
-          ${REPORT_CATALOG.map(card => `
-            <div class="report-3d-card ${card.theme}" onclick="ReportsComponent.openReport('${card.id}')">
-              <div class="report-3d-top">
-                <div class="report-3d-icon">${card.icon}</div>
-                <div class="report-3d-badge">${card.badge}</div>
+          <div class="reports-hub-hero" id="reports-hub-cards">
+            <div class="reports-hub-header">
+              <div class="reports-hub-title-group">
+                <div class="reports-badge-pill">
+                  <span class="live-dot"></span> CCMS / BILLDESK ENTERPRISE INTELLIGENCE
+                </div>
+                <h2>Reports & Analytics Hub</h2>
+                <p>Generate executive multi-sheet dashboards, board-level presentation decks, and 3D visual spend analytics.</p>
               </div>
-              <div class="report-3d-title">${card.title}</div>
-              <div class="report-3d-desc">${card.desc}</div>
-              <div class="report-3d-footer">
-                <span>Open 3D Analytics →</span>
+              <div class="reports-hub-actions">
+                <button class="btn-hub-excel" onclick="ReportsComponent.exportMultiSheetExcel()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                  Multi-Sheet Excel Dashboard
+                </button>
+                <button class="btn-hub-ppt" onclick="ReportsComponent.exportPresentationDeck()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Executive PPT Deck (.pptx)
+                </button>
               </div>
             </div>
-          `).join("")}
+
+            <!-- 3D COLORFUL CARDS GRID (Clicking any card opens that report with 1s loader) -->
+            <div class="reports-3d-grid">
+              ${REPORT_CATALOG.map(card => `
+                <div class="report-3d-card ${card.theme}" onclick="ReportsComponent.openReport('${card.id}')">
+                  <div class="report-3d-top">
+                    <div class="report-3d-icon">${card.icon}</div>
+                    <div class="report-3d-badge">${card.badge}</div>
+                  </div>
+                  <div class="report-3d-title">${card.title}</div>
+                  <div class="report-3d-desc">${card.desc}</div>
+                  <div class="report-3d-footer">
+                    <span>Open 3D Analytics →</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -269,89 +311,95 @@ const ReportsComponent = (function () {
     let currentCat = REPORT_CATALOG.find(c => c.id === activeReportTab) || REPORT_CATALOG[0];
 
     container.innerHTML = `
-      <!-- TOP DETAIL HEADER WITH BACK TO REPORTS HUB BUTTON -->
-      <div class="report-detail-header-card">
-        <div class="rep-header-left-group">
-          <button class="rep-back-btn" onclick="ReportsComponent.backToHub()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            Back to Reports Hub
-          </button>
-          <div class="rep-active-badge-group">
-            <span class="rep-active-icon">${currentCat.icon}</span>
-            <div class="rep-active-titles">
-              <h2>${currentCat.title}</h2>
-              <p>${currentCat.desc}</p>
+      <div class="reports-fintech-canvas ${getAuraClass()}" id="reports-fintech-root">
+        <div class="reports-canvas-content">
+          ${getAuraSwitcherHtml()}
+
+          <!-- TOP DETAIL HEADER WITH BACK TO REPORTS HUB BUTTON -->
+          <div class="report-detail-header-card">
+            <div class="rep-header-left-group">
+              <button class="rep-back-btn" onclick="ReportsComponent.backToHub()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Back to Reports Hub
+              </button>
+              <div class="rep-active-badge-group">
+                <span class="rep-active-icon">${currentCat.icon}</span>
+                <div class="rep-active-titles">
+                  <h2>${currentCat.title}</h2>
+                  <p>${currentCat.desc}</p>
+                </div>
+              </div>
+            </div>
+            <div class="rep-header-actions-group">
+              <button class="btn btn-secondary btn-sm" onclick="ReportsComponent.exportCurrentReport('csv')">Export CSV</button>
+              <button class="btn btn-primary btn-sm" onclick="ReportsComponent.exportCurrentReport('excel')">Export Excel</button>
             </div>
           </div>
-        </div>
-        <div class="rep-header-actions-group">
-          <button class="btn btn-secondary btn-sm" onclick="ReportsComponent.exportCurrentReport('csv')">Export CSV</button>
-          <button class="btn btn-primary btn-sm" onclick="ReportsComponent.exportCurrentReport('excel')">Export Excel</button>
-        </div>
-      </div>
 
-      <!-- Unified Filter Toolbar -->
-      <div class="reports-filter-card" id="reports-filter-section">
-        <div class="rep-filter-item">
-          <label>Time Horizon:</label>
-          <select id="rep-filter-date" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
-            <option value="all" ${reportFilters.dateRange === 'all' ? 'selected' : ''}>All Recorded Cycles</option>
-            <option value="this_month" ${reportFilters.dateRange === 'this_month' ? 'selected' : ''}>Current Calendar Month</option>
-            <option value="next_30" ${reportFilters.dateRange === 'next_30' ? 'selected' : ''}>Next 30 Days Due</option>
-            <option value="overdue" ${reportFilters.dateRange === 'overdue' ? 'selected' : ''}>Critical Overdue Only</option>
-          </select>
-        </div>
+          <!-- Unified Filter Toolbar -->
+          <div class="reports-filter-card" id="reports-filter-section">
+            <div class="rep-filter-item">
+              <label>Time Horizon:</label>
+              <select id="rep-filter-date" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
+                <option value="all" ${reportFilters.dateRange === 'all' ? 'selected' : ''}>All Recorded Cycles</option>
+                <option value="this_month" ${reportFilters.dateRange === 'this_month' ? 'selected' : ''}>Current Calendar Month</option>
+                <option value="next_30" ${reportFilters.dateRange === 'next_30' ? 'selected' : ''}>Next 30 Days Due</option>
+                <option value="overdue" ${reportFilters.dateRange === 'overdue' ? 'selected' : ''}>Critical Overdue Only</option>
+              </select>
+            </div>
 
-        <div class="rep-filter-item">
-          <label>Company Entity:</label>
-          <select id="rep-filter-company" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
-            <option value="all">All Group Companies</option>
-            ${companies.map(co => `<option value="${co.CompanyID}" ${String(reportFilters.companyId) === String(co.CompanyID) ? 'selected' : ''}>${co.CompanyName}</option>`).join("")}
-          </select>
-        </div>
+            <div class="rep-filter-item">
+              <label>Company Entity:</label>
+              <select id="rep-filter-company" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
+                <option value="all">All Group Companies</option>
+                ${companies.map(co => `<option value="${co.CompanyID}" ${String(reportFilters.companyId) === String(co.CompanyID) ? 'selected' : ''}>${co.CompanyName}</option>`).join("")}
+              </select>
+            </div>
 
-        <div class="rep-filter-item">
-          <label>Expense Category:</label>
-          <select id="rep-filter-category" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
-            <option value="all">All Expense Categories</option>
-            ${categories.map(cat => `<option value="${cat.CategoryID}" ${String(reportFilters.categoryId) === String(cat.CategoryID) ? 'selected' : ''}>${cat.CategoryName}</option>`).join("")}
-          </select>
-        </div>
+            <div class="rep-filter-item">
+              <label>Expense Category:</label>
+              <select id="rep-filter-category" class="form-control form-control-sm" onchange="ReportsComponent.handleFilterChange()">
+                <option value="all">All Expense Categories</option>
+                ${categories.map(cat => `<option value="${cat.CategoryID}" ${String(reportFilters.categoryId) === String(cat.CategoryID) ? 'selected' : ''}>${cat.CategoryName}</option>`).join("")}
+              </select>
+            </div>
 
-        <div class="rep-filter-item search-grow">
-          <label>Quick Search:</label>
-          <div class="search-box">
-            <input type="text" id="rep-filter-search" class="search-input" placeholder="Search vendor, invoice no, period..." value="${reportFilters.searchQuery}" onkeyup="ReportsComponent.handleSearch(event)">
+            <div class="rep-filter-item search-grow">
+              <label>Quick Search:</label>
+              <div class="search-box">
+                <input type="text" id="rep-filter-search" class="search-input" placeholder="Search vendor, invoice no, period..." value="${reportFilters.searchQuery}" onkeyup="ReportsComponent.handleSearch(event)">
+              </div>
+            </div>
+
+            <div class="rep-filter-item action-btn">
+              <button class="btn btn-secondary btn-sm" onclick="ReportsComponent.resetFilters()" title="Reset all filters">
+                Reset
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div class="rep-filter-item action-btn">
-          <button class="btn btn-secondary btn-sm" onclick="ReportsComponent.resetFilters()" title="Reset all filters">
-            Reset
-          </button>
-        </div>
-      </div>
+          <!-- Main Report Dynamic Content Container -->
+          <div id="report-view-mount">
+            ${renderActiveReport(data)}
+          </div>
 
-      <!-- Main Report Dynamic Content Container -->
-      <div id="report-view-mount">
-        ${renderActiveReport(data)}
-      </div>
-
-      <!-- Bottom Action Toolbar -->
-      <div class="reports-bottom-toolbar">
-        <button class="btn btn-secondary" onclick="ReportsComponent.backToHub()">
-          ← Back to Reports Hub
-        </button>
-        <div class="bottom-actions-right">
-          <button class="btn-hub-ppt-sm" onclick="ReportsComponent.exportPresentationDeck()">
-            Export PPT Deck
-          </button>
-          <button class="btn-hub-excel-sm" onclick="ReportsComponent.exportMultiSheetExcel()">
-            Multi-Sheet Excel
-          </button>
-          <button class="btn btn-primary" onclick="ReportsComponent.exportCurrentReport('excel')">
-            Export Current Report
-          </button>
+          <!-- Bottom Action Toolbar -->
+          <div class="reports-bottom-toolbar">
+            <button class="btn btn-secondary" onclick="ReportsComponent.backToHub()">
+              ← Back to Reports Hub
+            </button>
+            <div class="bottom-actions-right">
+              <button class="btn-hub-ppt-sm" onclick="ReportsComponent.exportPresentationDeck()">
+                Export PPT Deck
+              </button>
+              <button class="btn-hub-excel-sm" onclick="ReportsComponent.exportMultiSheetExcel()">
+                Multi-Sheet Excel
+              </button>
+              <button class="btn btn-primary" onclick="ReportsComponent.exportCurrentReport('excel')">
+                Export Current Report
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -1935,6 +1983,7 @@ const ReportsComponent = (function () {
     render: render,
     openReport: openReport,
     backToHub: backToHub,
+    setAuraTheme: setAuraTheme,
     handleFilterChange: handleFilterChange,
     handleSearch: handleSearch,
     resetFilters: resetFilters,
