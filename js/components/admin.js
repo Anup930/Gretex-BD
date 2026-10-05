@@ -15,7 +15,7 @@ const AdminComponent = (function () {
       <div class="view-header">
         <div class="view-title-group">
           <h1>System Administration & Master Data</h1>
-          <p>Configure user capabilities, custom roles, entity masters, bank accounts, and Apps Script connections.</p>
+          <p>Configure user capabilities, custom roles, entity masters, and bank accounts.</p>
         </div>
       </div>
 
@@ -26,7 +26,6 @@ const AdminComponent = (function () {
         <button class="btn ${activeTab === 'vendors' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('vendors')">Vendors & Payees</button>
         <button class="btn ${activeTab === 'categories' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('categories')">Expense Categories</button>
         <button class="btn ${activeTab === 'banks' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('banks')">Bank Accounts</button>
-        <button class="btn ${activeTab === 'settings' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('settings')">API & System Settings</button>
       </div>
 
       <div id="admin-tab-content">
@@ -46,13 +45,11 @@ const AdminComponent = (function () {
   }
 
   function renderTabContent() {
-    if (activeTab === "users") return renderUsersTab();
     if (activeTab === "companies") return renderCompaniesTab();
     if (activeTab === "vendors") return renderVendorsTab();
     if (activeTab === "categories") return renderCategoriesTab();
     if (activeTab === "banks") return renderBanksTab();
-    if (activeTab === "settings") return renderSettingsTab();
-    return "";
+    return renderUsersTab();
   }
 
   // Users & Roles

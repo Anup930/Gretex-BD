@@ -31,6 +31,10 @@ const DashboardComponent = (function () {
     container.innerHTML = `
       <div class="view-header">
         <div class="view-title-group">
+          <div class="dashboard-sync-pill" onclick="BillDeskDataStore.forceSync()" title="Auto-syncs every 3 mins. Click to sync now.">
+            <span class="sync-live-dot"></span>
+            <span>Backend Sync in <strong class="sync-countdown-val">03:00</strong></span>
+          </div>
           <h1>Welcome, ${user ? user.displayName : "User"}</h1>
           <p>Operational control center for recurring obligations and cash planning.</p>
         </div>
