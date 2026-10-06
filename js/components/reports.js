@@ -18,7 +18,7 @@ const ReportsComponent = (function () {
     searchQuery: ""
   };
 
-  // 12 High-Value Enterprise Report Types for 3D Cards Grid
+  // 18 High-Value Enterprise Report Types with Deep Calculation & Methodology Metadata
   const REPORT_CATALOG = [
     {
       id: "summary",
@@ -26,7 +26,15 @@ const ReportsComponent = (function () {
       desc: "Real-time aggregate obligation volume, clearance ratios & financial risk cockpit.",
       icon: "📊",
       theme: "theme-coral",
-      badge: "Core Cockpit"
+      badge: "Core Cockpit",
+      whatItShows: [
+        "Consolidated obligation volume across all entities & subsidiaries",
+        "Clearance velocity & payout pipeline awaiting disbursement",
+        "Immediate overdue bills & statutory tax withholding split (TDS & GST)"
+      ],
+      formula: "• Total Net Obligation = Σ (BillAmount - TDSAmount + GSTAmount)\n• Clearance Ratio = (Total Paid ÷ Total Net Obligation) × 100\n• Approved Pipeline = Σ (NetPayable where Status = 'Approved')",
+      dataSources: ["billCycles", "companies", "vendors"],
+      governance: "Corporate Board Financial Solvency & Working Capital Control"
     },
     {
       id: "aging",
@@ -34,7 +42,15 @@ const ReportsComponent = (function () {
       desc: "Upcoming statement dues by urgency (Current, 1-15d, 16-30d, 31-60d, 60d+).",
       icon: "⏳",
       theme: "theme-rose",
-      badge: "High Risk"
+      badge: "High Risk",
+      whatItShows: [
+        "Pending bills classified into 5 time-based aging risk runway buckets",
+        "High-risk overdue bills approaching vendor notice or penalty stages",
+        "Aging distribution by supplier to prevent credit holds on vital accounts"
+      ],
+      formula: "• Aging Days = Current Date - Statement Due Date\n• Current: DueDate ≥ Today | Low Risk: 1-15d Overdue\n• Moderate: 16-30d | High: 31-60d | Critical: >60d Overdue",
+      dataSources: ["billCycles.DueDate", "billCycles.NetPayable", "billCycles.Status"],
+      governance: "Credit Rating Protection & Default Penalty Avoidance"
     },
     {
       id: "company",
@@ -42,7 +58,15 @@ const ReportsComponent = (function () {
       desc: "Inter-company liability allocation, subsidiary breakdown & clearance meters.",
       icon: "🏢",
       theme: "theme-emerald",
-      badge: "Entity View"
+      badge: "Entity View",
+      whatItShows: [
+        "Inter-company liability allocation across operating subsidiaries",
+        "Subsidiary-level clearance ratios and invoice settlement throughput",
+        "Paying unit breakdown of gross billing, statutory withholdings, and net payout"
+      ],
+      formula: "• Entity Spend Share % = (Entity Net Payable ÷ Consolidated Net) × 100\n• Entity Clearance Rate = (Entity Cleared Payout ÷ Entity Total Billed) × 100\n• Inter-Company Net Outflow = Σ NetPayable grouped by CompanyID",
+      dataSources: ["companies", "billCycles.CompanyID"],
+      governance: "Inter-Company Fund Allocation & Subsidiary Budget Accountability"
     },
     {
       id: "vendor",
@@ -50,7 +74,15 @@ const ReportsComponent = (function () {
       desc: "Top suppliers ranking, volume concentration, and pending invoice liabilities.",
       icon: "🤝",
       theme: "theme-blue",
-      badge: "Payee Spend"
+      badge: "Payee Spend",
+      whatItShows: [
+        "Top supplier rankings sorted by aggregate invoice volume",
+        "Payee spend concentration applying Pareto 80/20 procurement analysis",
+        "Outstanding unpaid liabilities per vendor and active invoice count"
+      ],
+      formula: "• Vendor Spend = Σ (NetPayable grouped by VendorName)\n• Concentration Index = (Top 5 Vendors Spend ÷ Total Group Spend) × 100\n• Pending Payables = Σ (Unpaid NetPayable per Payee)",
+      dataSources: ["vendors", "billCycles.VendorName", "billCycles.Status"],
+      governance: "Supplier Concentration Risk & Strategic Procurement Optimization"
     },
     {
       id: "category",
@@ -58,7 +90,15 @@ const ReportsComponent = (function () {
       desc: "Deep-dive analysis of spends grouped by expense category & merchant type.",
       icon: "🏷️",
       theme: "theme-purple",
-      badge: "Cost Centers"
+      badge: "Cost Centers",
+      whatItShows: [
+        "Granular expenditure split across cost centers (SaaS, Rent, Capex, Legal)",
+        "Comparison of category spend against pre-configured variance thresholds",
+        "Sudden expense inflation detection across corporate merchant categories"
+      ],
+      formula: "• Category Share % = (Category Net Spend ÷ Total Spend) × 100\n• Variance Alert = Triggers if Monthly Spend > (Prior Avg × Threshold %)\n• Category Total = Σ NetPayable grouped by CategoryID",
+      dataSources: ["categories", "billCycles.CategoryName", "categories.VarianceThresholdPct"],
+      governance: "Departmental Cost Center Containment & Operational Budget Control"
     },
     {
       id: "cashflow",
@@ -66,7 +106,15 @@ const ReportsComponent = (function () {
       desc: "Projected treasury cash outflow demands for immediate 7d, 15d and 30d windows.",
       icon: "🏦",
       theme: "theme-cyan",
-      badge: "Treasury"
+      badge: "Treasury",
+      whatItShows: [
+        "Projected cash demands over immediate 7-day, 15-day, and 30-day horizons",
+        "Treasury payout requirements benchmarked against total usable bank funds",
+        "Net cash headroom or shortfall forecast to prevent liquidity crunch"
+      ],
+      formula: "• 7-Day Outflow = Σ (NetPayable where DueDate ≤ Today + 7d)\n• 15-Day Outflow = Σ (NetPayable where DueDate ≤ Today + 15d)\n• 30-Day Outflow = Σ (NetPayable where DueDate ≤ Today + 30d)\n• Net Headroom = Total Usable Bank Balance - 30-Day Outflow Demand",
+      dataSources: ["billCycles.DueDate", "bankAccounts.UsableBalance"],
+      governance: "Treasury Working Capital Planning & Overdraft Avoidance"
     },
     {
       id: "sla",
@@ -74,7 +122,15 @@ const ReportsComponent = (function () {
       desc: "Turnaround velocity, submission cycle times and manager review bottlenecks.",
       icon: "⚡",
       theme: "theme-amber",
-      badge: "Velocity"
+      badge: "Velocity",
+      whatItShows: [
+        "Manager review turnaround velocity (TAT) and approval bottleneck identification",
+        "Submission cycle times from operator voucher creation to final sign-off",
+        "SLA breach warnings for vouchers pending manager review over 48 hours"
+      ],
+      formula: "• Approval TAT = Approval Timestamp - Submission Timestamp\n• Avg Queue TAT = Σ (TAT of All Tasks) ÷ Total Completed Approvals\n• SLA Compliance % = (Tasks Approved within 48h ÷ Total Tasks) × 100",
+      dataSources: ["approvalTasks", "approvalRoutes", "billCycles.ReviewedAt"],
+      governance: "Operational Turnaround Efficiency & Manager Review SLA Accountability"
     },
     {
       id: "disbursement",
@@ -82,7 +138,15 @@ const ReportsComponent = (function () {
       desc: "Payment disbursement history, mode (NEFT/RTGS/IMPS) and bank UTR tracking.",
       icon: "💳",
       theme: "theme-teal",
-      badge: "Settled"
+      badge: "Settled",
+      whatItShows: [
+        "Historical disbursement ledger across banking settlement channels",
+        "Payment mode split (NEFT, RTGS, IMPS, Corporate NetBanking)",
+        "Bank transaction UTR reference tracking and timestamped confirmation"
+      ],
+      formula: "• Total Disbursed = Σ (AmountPaid where ConfirmationState = 'Confirmed')\n• Rail Share % = (Mode Disbursed ÷ Total Disbursed) × 100\n• UTR Coverage % = (Disbursements with UTR ÷ Total Disbursements) × 100",
+      dataSources: ["paymentAttempts", "billCycles.Status", "bankAccounts"],
+      governance: "Settlement Verification & Dual-Control Banking Ledger Integrity"
     },
     {
       id: "tax",
@@ -90,7 +154,15 @@ const ReportsComponent = (function () {
       desc: "Section-wise TDS deductions (194C, 194J), GST ITC credit & statutory ledger.",
       icon: "📑",
       theme: "theme-gold",
-      badge: "Statutory"
+      badge: "Statutory",
+      whatItShows: [
+        "Section-wise TDS deductions (Sec 194C Contractor, 194J Professional, 194I Rent)",
+        "Eligible GST Input Tax Credit (ITC) claimable against supplier tax invoices",
+        "Statutory tax withholding reconciliation ready for monthly IT & GST return filings"
+      ],
+      formula: "• TDS Withheld = Bill Taxable Base × Statutory Section Rate (1%, 2%, 10%)\n• Net Payable = Gross Amount - TDS Withheld\n• Eligible GST ITC = Σ (GST Amount on Invoices with Valid GSTIN)",
+      dataSources: ["billCycles.TDSAmount", "billCycles.GSTAmount", "vendors.GSTNumber", "vendors.PANNumber"],
+      governance: "Income Tax Act 1961 Compliance & CGST/SGST Input Tax Credit Maximization"
     },
     {
       id: "reconciliation",
@@ -98,7 +170,15 @@ const ReportsComponent = (function () {
       desc: "Match BillDesk invoice entries against banking statement debits & credits.",
       icon: "🔄",
       theme: "theme-indigo",
-      badge: "Reconciled"
+      badge: "Reconciled",
+      whatItShows: [
+        "Two-way matching of internal BillDesk invoice records against bank debit entries",
+        "Discrepancy detection for partial settlements, excess debits, or missing vouchers",
+        "Unreconciled bank ledger exceptions requiring financial auditor review"
+      ],
+      formula: "• Match Criteria: (Invoice NetPayable == Bank Debit Amount) && (UTR Verified)\n• Discrepancy Delta = |Invoice NetPayable - Disbursed Amount|\n• Match Rate % = (Fully Matched Records ÷ Total Records) × 100",
+      dataSources: ["billCycles", "paymentAttempts.BankUTR", "bankAccounts"],
+      governance: "Zero Cash-Leakage Governance & Statutory Financial Audit Clearance"
     },
     {
       id: "budget",
@@ -106,7 +186,15 @@ const ReportsComponent = (function () {
       desc: "Departmental budget headroom utilization, limit monitoring & spend caps.",
       icon: "⚖️",
       theme: "theme-pink",
-      badge: "Limit Cap"
+      badge: "Limit Cap",
+      whatItShows: [
+        "Departmental and entity budget cap headroom utilization",
+        "Real-time monitoring of budget burn rate against approved corporate limits",
+        "Threshold breach alerts when cumulative spend reaches 90% of budget cap"
+      ],
+      formula: "• Budget Utilization % = (Cumulative Net Spend ÷ Sanctioned Limit) × 100\n• Headroom Remaining = Sanctioned Cap - Cumulative Net Spend\n• Burn Status = Normal (<75%) | Warning (75-90%) | Critical (>90%)",
+      dataSources: ["config.BudgetLimits", "categories.VarianceThresholdPct", "billCycles"],
+      governance: "Departmental Spend Cap Enforcement & Fiscal Discipline"
     },
     {
       id: "audit",
@@ -114,7 +202,15 @@ const ReportsComponent = (function () {
       desc: "Missing mandatory fields analysis, anomaly detection and governance audit.",
       icon: "🛡️",
       theme: "theme-slate",
-      badge: "Hygiene"
+      badge: "Hygiene",
+      whatItShows: [
+        "Missing mandatory data validation (Invoice #, Due Date, PDF receipt, PAN/GSTIN)",
+        "Audit trail of user actions, bill edits, status transitions, and timestamps",
+        "Anomaly detection score highlighting incomplete records in the ledger"
+      ],
+      formula: "• Hygiene Defect Count = Missing Invoice No + Missing Due Date + Missing File\n• Data Hygiene Score = 100 - ((Defective Records ÷ Total Records) × 100)\n• Audit Log Integrity = 100% of state changes logged with Actor Email",
+      dataSources: ["auditLog", "billCycles", "attachments"],
+      governance: "Statutory Accounting Standard Hygiene & Forensic Audit Readiness"
     },
     {
       id: "bank_liquidity",
@@ -122,7 +218,15 @@ const ReportsComponent = (function () {
       desc: "Live anchor balances, statutory reserves & real-time usable liquidity across all corporate bank accounts.",
       icon: "🏛️",
       theme: "theme-sky",
-      badge: "Treasury"
+      badge: "Treasury",
+      whatItShows: [
+        "Live usable liquidity, gross anchor holdings, and ringfenced reserves per bank",
+        "Liquidity Coverage Ratio (LCR) measuring available cash against approved liabilities",
+        "Corporate account utilization and liquidity buffer distribution"
+      ],
+      formula: "• Usable Liquidity = Anchor Balance - Ringfenced Reserves - Pending Debits\n• Liquidity Coverage Ratio (LCR) = (Total Usable Funds ÷ Approved Dues) × 100\n• Net Treasury Headroom = Total Usable Funds - Total Approved Dues",
+      dataSources: ["bankAccounts", "billCycles.Status", "paymentAttempts"],
+      governance: "Corporate Treasury Health & Uninterrupted Working Capital Coverage"
     },
     {
       id: "recurring_compliance",
@@ -130,7 +234,15 @@ const ReportsComponent = (function () {
       desc: "Track recurring master schedules, generation cadence, period gaps & projected commitments.",
       icon: "🔁",
       theme: "theme-violet",
-      badge: "Cadence"
+      badge: "Cadence",
+      whatItShows: [
+        "Registry of recurring bill masters (Leases, SaaS, Retainers, Utilities)",
+        "Monthly normalized recurring commitment run-rate calculation",
+        "Cadence health and missed/drift cycle generation alerts"
+      ],
+      formula: "• Monthly Run-Rate = Σ (Monthly × 1 + Quarterly ÷ 3 + Yearly ÷ 12 + Weekly × 4)\n• Cycle Drift Alert: Triggered if Current Month > LastGeneratedPeriod\n• Cadence Health % = (Synchronized Schedules ÷ Total Schedules) × 100",
+      dataSources: ["recurringSchedules", "billCycles.PeriodName"],
+      governance: "Automated Recurring Payment Governance & Zero Missed Billing Cycles"
     },
     {
       id: "msme_compliance",
@@ -138,7 +250,15 @@ const ReportsComponent = (function () {
       desc: "Micro & Small enterprise liability governance under Section 43B(h), payment aging & interest exposure.",
       icon: "📜",
       theme: "theme-lime",
-      badge: "Section 43B(h)"
+      badge: "Section 43B(h)",
+      whatItShows: [
+        "Micro and Small enterprise supplier payables under Section 43B(h)",
+        "45-day statutory payment countdown to prevent tax deduction disallowance",
+        "Compounded monthly interest penalty exposure under MSMED Act Section 16"
+      ],
+      formula: "• Aging from Invoice/Due = Current Date - Statement Due Date\n• Breach Rule: If Aging > 45 Days → Disallowed under Sec 43B(h) Income Tax\n• Statutory Penalty = Principal × (3 × RBI Bank Rate) × (Days ÷ 365) monthly compounded",
+      dataSources: ["vendors.MSMEStatus", "vendors.GSTNumber", "billCycles.DueDate"],
+      governance: "Section 43B(h) Tax Disallowance Shield & MSMED Act 2006 Legal Compliance"
     },
     {
       id: "approval_bottlenecks",
@@ -146,7 +266,15 @@ const ReportsComponent = (function () {
       desc: "Granular approver task queues, decision velocity, rejected bill revisions & SLA countdown.",
       icon: "🚦",
       theme: "theme-crimson",
-      badge: "Approvals"
+      badge: "Approvals",
+      whatItShows: [
+        "Granular approver task queues and pending review workload per manager",
+        "Approval queue dwell time (average days pending in manager queue)",
+        "Rework and rejection revision rates highlighting bill discrepancy corrections"
+      ],
+      formula: "• Queue Age = Current Timestamp - Task Creation Timestamp\n• Escalation Alert: Triggered if Queue Age > 48 Hours\n• Rework Rate % = (Returned/Rejected Tasks ÷ Total Processed Tasks) × 100",
+      dataSources: ["approvalTasks", "approvalRoutes", "billCycles"],
+      governance: "Multi-Tier Approval Segregation & Management Review SLA Enforcement"
     },
     {
       id: "maker_checker_audit",
@@ -154,7 +282,15 @@ const ReportsComponent = (function () {
       desc: "Independent payment confirmation logs, maker-checker segregation verification & failed attempts.",
       icon: "🔐",
       theme: "theme-marine",
-      badge: "Rule R-07"
+      badge: "Rule R-07",
+      whatItShows: [
+        "Verification log of disbursements enforcing Corporate Rule R-07",
+        "Dual-control independent confirmation ensuring Initiator ≠ Confirmer",
+        "In-flight checker verification queue and blocked self-confirmation attempts"
+      ],
+      formula: "• Rule R-07 Validation: Assert(InitiatorUserID != ConfirmerUserID)\n• Dual-Control Rate % = (Dual-Confirmed Payouts ÷ Total Disbursed Payouts) × 100\n• Zero-Trust Policy Score = 100% Segregation Enforced",
+      dataSources: ["paymentAttempts", "auditLog", "billCycles"],
+      governance: "Corporate Rule R-07: Anti-Fraud Dual Control & Separation of Duties"
     },
     {
       id: "attachment_hygiene",
@@ -162,9 +298,188 @@ const ReportsComponent = (function () {
       desc: "Invoice PDF/proof file coverage, OCR verification health & missing document risk monitoring.",
       icon: "📁",
       theme: "theme-fuchsia",
-      badge: "Doc Hygiene"
+      badge: "Doc Hygiene",
+      whatItShows: [
+        "Digital invoice PDF and payment proof attachment coverage across all bills",
+        "OCR scanning verification accuracy and human-review flag rates",
+        "Missing document compliance risk for bills approved or paid without attached proof"
+      ],
+      formula: "• Document Coverage % = (Bills with Attached PDF ÷ Total Bills) × 100\n• OCR Health Rate % = (Auto-Verified Documents ÷ Total Documents) × 100\n• Missing Proof Risk = Count(Bills in 'Approved' or 'Paid' status lacking PDF file)",
+      dataSources: ["attachments", "billCycles.InvoiceFileID", "billCycles.ScanStatus"],
+      governance: "100% Paperless Digital Audit Trail & Tax Authority Invoice Substantiation"
     }
   ];
+
+  // Helper function to build 3D Hover Intel Card HTML with typewriter row markers
+  function buildHoverIntelHtml(report) {
+    if (!report) return "";
+
+    let bulletRows = (report.whatItShows || []).map(b => `
+      <li class="intel-bullet-item intel-type-row">
+        <span class="intel-bullet-dot">▸</span>
+        <span>${b}</span>
+      </li>
+    `).join("");
+
+    let sources = (report.dataSources || []).map(s => `
+      <span class="intel-src-tag">${s}</span>
+    `).join("");
+
+    return `
+      <div class="intel-header intel-type-row">
+        <div class="intel-title-group">
+          <span class="intel-icon">${report.icon}</span>
+          <div>
+            <div class="intel-title">${report.title}</div>
+            <div style="font-size:0.65rem; color:#94a3b8;">Methodology & Formula Inspector</div>
+          </div>
+        </div>
+        <span class="intel-badge">${report.badge}</span>
+      </div>
+
+      <div class="intel-section-title intel-type-row">
+        <span>📋</span> KYA SHOW HO RAHA HAI (DATA SCOPE)
+      </div>
+
+      <ul class="intel-bullet-list">
+        ${bulletRows}
+      </ul>
+
+      <div class="intel-section-title intel-type-row" style="margin-top:0.6rem;">
+        <span>🧮</span> KAISE CALCULATE HOTA HAI (FORMULA & LOGIC)
+      </div>
+
+      <div class="intel-formula-box intel-type-row typing">${report.formula || "Standard aggregation and state filtering"}</div>
+
+      <div class="intel-meta-row intel-type-row">
+        <div class="intel-sources">
+          <span style="font-size:0.65rem; color:#94a3b8; font-weight:700;">SOURCES:</span>
+          ${sources}
+        </div>
+        <div class="intel-rule-badge">
+          <span>🛡️</span> ${report.governance || "CCMS Policy Compliance"}
+        </div>
+      </div>
+
+      <div class="intel-footer intel-type-row">
+        ⚡ Click card to launch 3D report & interactive charts →
+      </div>
+    `;
+  }
+
+  let hoverIntelTimeout = null;
+  let _intelTypeTimers = [];      // Track active row-reveal timers
+  let _intelActiveReportId = null; // Track which card is being hovered
+
+  function showHoverIntel(event, reportId) {
+    let cardEl = event.currentTarget;
+    let report = REPORT_CATALOG.find(c => c.id === reportId);
+    if (!report) return;
+
+    // If already showing this report's intel, skip rebuild
+    if (_intelActiveReportId === reportId) return;
+    _intelActiveReportId = reportId;
+
+    // Cancel any running typewriter timers from previous hover
+    _intelTypeTimers.forEach(t => clearTimeout(t));
+    _intelTypeTimers = [];
+
+    let intelEl = document.getElementById("report-hover-intel-card");
+    if (!intelEl) {
+      intelEl = document.createElement("div");
+      intelEl.id = "report-hover-intel-card";
+      intelEl.className = "report-hover-intel-card";
+      document.body.appendChild(intelEl);
+    }
+
+    intelEl.innerHTML = buildHoverIntelHtml(report);
+    intelEl.className = `report-hover-intel-card ${report.theme}`;
+
+    // Position the card next to the hovered 3D card
+    let rect = cardEl.getBoundingClientRect();
+    let cardWidth = 420;
+    let viewportWidth = window.innerWidth;
+    let viewportHeight = window.innerHeight;
+
+    let left, top;
+
+    if (rect.right + cardWidth + 18 <= viewportWidth) {
+      left = rect.right + 14;
+    } else if (rect.left - cardWidth - 18 >= 0) {
+      left = rect.left - cardWidth - 14;
+    } else {
+      left = Math.max(16, Math.min(viewportWidth - cardWidth - 16, rect.left + (rect.width - cardWidth) / 2));
+    }
+
+    top = rect.top - 10;
+    intelEl.style.display = "block";
+    let intelHeight = intelEl.offsetHeight || 360;
+
+    if (top + intelHeight > viewportHeight - 14) {
+      top = Math.max(14, viewportHeight - intelHeight - 14);
+    }
+    if (top < 14) top = 14;
+
+    intelEl.style.left = `${left}px`;
+    intelEl.style.top = `${top}px`;
+
+    clearTimeout(hoverIntelTimeout);
+
+    // Show the container first
+    requestAnimationFrame(() => {
+      intelEl.classList.add("visible");
+
+      // Typewriter: reveal each .intel-type-row one by one with staggered delays
+      let rows = intelEl.querySelectorAll(".intel-type-row");
+      let baseDelay = 120;  // ms before first row appears
+      let rowGap = 140;     // ms between each row reveal
+
+      rows.forEach((row, idx) => {
+        let timer = setTimeout(() => {
+          // Remove cursor from previous row
+          if (idx > 0 && rows[idx - 1]) {
+            rows[idx - 1].classList.remove("intel-type-cursor");
+          }
+          // Reveal this row with cursor
+          row.classList.add("revealed", "intel-type-cursor");
+
+          // Remove cursor from last row after a beat
+          if (idx === rows.length - 1) {
+            let endTimer = setTimeout(() => {
+              row.classList.remove("intel-type-cursor");
+              // Remove the scanline effect from formula box once done
+              let formulaBox = intelEl.querySelector(".intel-formula-box.typing");
+              if (formulaBox) formulaBox.classList.remove("typing");
+            }, 600);
+            _intelTypeTimers.push(endTimer);
+          }
+        }, baseDelay + (idx * rowGap));
+        _intelTypeTimers.push(timer);
+      });
+    });
+  }
+
+  function hideHoverIntel() {
+    _intelActiveReportId = null;
+
+    // Cancel all running typewriter timers
+    _intelTypeTimers.forEach(t => clearTimeout(t));
+    _intelTypeTimers = [];
+
+    let intelEl = document.getElementById("report-hover-intel-card");
+    if (intelEl) {
+      intelEl.classList.remove("visible");
+      hoverIntelTimeout = setTimeout(() => {
+        if (!intelEl.classList.contains("visible")) {
+          intelEl.style.display = "none";
+          // Reset all rows to hidden state for next hover
+          intelEl.querySelectorAll(".intel-type-row").forEach(r => {
+            r.classList.remove("revealed", "intel-type-cursor");
+          });
+        }
+      }, 220);
+    }
+  }
 
   // Helper to format currency
   function fmtINR(val) {
@@ -330,10 +645,14 @@ const ReportsComponent = (function () {
               </div>
             </div>
 
-            <!-- 3D COLORFUL CARDS GRID (Clicking any card opens that report with 1s loader) -->
+            <!-- 3D COLORFUL CARDS GRID (Clicking any card opens that report with 1s loader; Hover reveals Intel & Math Inspector) -->
             <div class="reports-3d-grid">
               ${REPORT_CATALOG.map(card => `
-                <div class="report-3d-card ${card.theme}" onclick="ReportsComponent.openReport('${card.id}')">
+                <div class="report-3d-card ${card.theme}" 
+                     data-report-id="${card.id}"
+                     onmouseenter="ReportsComponent.showHoverIntel(event, '${card.id}')"
+                     onmouseleave="ReportsComponent.hideHoverIntel()"
+                     onclick="ReportsComponent.openReport('${card.id}')">
                   <div class="report-3d-top">
                     <div class="report-3d-icon">${card.icon}</div>
                     <div class="report-3d-badge">${card.badge}</div>
@@ -342,6 +661,7 @@ const ReportsComponent = (function () {
                   <div class="report-3d-desc">${card.desc}</div>
                   <div class="report-3d-footer">
                     <span>Open 3D Analytics →</span>
+                    <span class="report-3d-intel-hint"><span class="intel-pulse-dot"></span> Math & Logic</span>
                   </div>
                 </div>
               `).join("")}
@@ -455,6 +775,7 @@ const ReportsComponent = (function () {
 
   // Open a specific report with 1-second professional cockpit loader
   async function openReport(reportId) {
+    hideHoverIntel();
     let container = document.getElementById("view-container");
     if (!container) return;
 
@@ -475,6 +796,7 @@ const ReportsComponent = (function () {
 
   // Back to Reports Hub with 1-second professional cockpit loader
   async function backToHub() {
+    hideHoverIntel();
     let container = document.getElementById("view-container");
     if (!container) return;
 
@@ -3069,6 +3391,8 @@ const ReportsComponent = (function () {
     render: render,
     openReport: openReport,
     backToHub: backToHub,
+    showHoverIntel: showHoverIntel,
+    hideHoverIntel: hideHoverIntel,
     setAuraTheme: setAuraTheme,
     handleFilterChange: handleFilterChange,
     handleSearch: handleSearch,
