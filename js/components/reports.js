@@ -338,7 +338,7 @@ const ReportsComponent = (function () {
       </div>
 
       <div class="intel-section-title intel-type-row">
-        <span>📋</span> KYA SHOW HO RAHA HAI (DATA SCOPE)
+        <span>📋</span> DATA SCOPE & INSIGHTS
       </div>
 
       <ul class="intel-bullet-list">
@@ -346,7 +346,7 @@ const ReportsComponent = (function () {
       </ul>
 
       <div class="intel-section-title intel-type-row" style="margin-top:0.6rem;">
-        <span>🧮</span> KAISE CALCULATE HOTA HAI (FORMULA & LOGIC)
+        <span>🧮</span> CALCULATION METHODOLOGY (FORMULA & LOGIC)
       </div>
 
       <div class="intel-formula-box intel-type-row typing">${report.formula || "Standard aggregation and state filtering"}</div>
