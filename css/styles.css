@@ -2780,6 +2780,30 @@ body {
   background: linear-gradient(135deg, #64748b 0%, #334155 100%);
   box-shadow: 0 10px 22px -5px rgba(51, 65, 85, 0.45);
 }
+.theme-violet {
+  background: linear-gradient(135deg, #c084fc 0%, #7e22ce 100%);
+  box-shadow: 0 10px 22px -5px rgba(126, 34, 206, 0.45);
+}
+.theme-sky {
+  background: linear-gradient(135deg, #38bdf8 0%, #0369a1 100%);
+  box-shadow: 0 10px 22px -5px rgba(3, 105, 161, 0.45);
+}
+.theme-lime {
+  background: linear-gradient(135deg, #a3e635 0%, #4d7c0f 100%);
+  box-shadow: 0 10px 22px -5px rgba(77, 124, 15, 0.45);
+}
+.theme-fuchsia {
+  background: linear-gradient(135deg, #f472b6 0%, #a21caf 100%);
+  box-shadow: 0 10px 22px -5px rgba(162, 28, 175, 0.45);
+}
+.theme-crimson {
+  background: linear-gradient(135deg, #f43f5e 0%, #9f1239 100%);
+  box-shadow: 0 10px 22px -5px rgba(159, 18, 57, 0.45);
+}
+.theme-marine {
+  background: linear-gradient(135deg, #22d3ee 0%, #0e7490 100%);
+  box-shadow: 0 10px 22px -5px rgba(14, 116, 144, 0.45);
+}
 
 .report-3d-top {
   display: flex;
