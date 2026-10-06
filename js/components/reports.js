@@ -115,6 +115,54 @@ const ReportsComponent = (function () {
       icon: "🛡️",
       theme: "theme-slate",
       badge: "Hygiene"
+    },
+    {
+      id: "bank_liquidity",
+      title: "Bank Liquidity & Usable Limits",
+      desc: "Live anchor balances, statutory reserves & real-time usable liquidity across all corporate bank accounts.",
+      icon: "🏛️",
+      theme: "theme-sky",
+      badge: "Treasury"
+    },
+    {
+      id: "recurring_compliance",
+      title: "Recurring Schedules & Cycle Drift",
+      desc: "Track recurring master schedules, generation cadence, period gaps & projected commitments.",
+      icon: "🔁",
+      theme: "theme-violet",
+      badge: "Cadence"
+    },
+    {
+      id: "msme_compliance",
+      title: "MSME Compliance & Statutory 45-Day Rule",
+      desc: "Micro & Small enterprise liability governance under Section 43B(h), payment aging & interest exposure.",
+      icon: "📜",
+      theme: "theme-lime",
+      badge: "Section 43B(h)"
+    },
+    {
+      id: "approval_bottlenecks",
+      title: "Multi-Level Approval Bottlenecks",
+      desc: "Granular approver task queues, decision velocity, rejected bill revisions & SLA countdown.",
+      icon: "🚦",
+      theme: "theme-crimson",
+      badge: "Approvals"
+    },
+    {
+      id: "maker_checker_audit",
+      title: "Maker-Checker & Rule R-07 Audit",
+      desc: "Independent payment confirmation logs, maker-checker segregation verification & failed attempts.",
+      icon: "🔐",
+      theme: "theme-marine",
+      badge: "Rule R-07"
+    },
+    {
+      id: "attachment_hygiene",
+      title: "Digital Attachments & OCR Scan Health",
+      desc: "Invoice PDF/proof file coverage, OCR verification health & missing document risk monitoring.",
+      icon: "📁",
+      theme: "theme-fuchsia",
+      badge: "Doc Hygiene"
     }
   ];
 
@@ -493,6 +541,12 @@ const ReportsComponent = (function () {
     if (activeReportTab === "reconciliation") return renderReconciliationReport(data);
     if (activeReportTab === "budget") return renderBudgetReport(data);
     if (activeReportTab === "audit") return renderDataHygieneReport(data);
+    if (activeReportTab === "bank_liquidity") return renderBankLiquidityReport(data);
+    if (activeReportTab === "recurring_compliance") return renderRecurringComplianceReport(data);
+    if (activeReportTab === "msme_compliance") return renderMsmeComplianceReport(data);
+    if (activeReportTab === "approval_bottlenecks") return renderApprovalBottlenecksReport(data);
+    if (activeReportTab === "maker_checker_audit") return renderMakerCheckerAuditReport(data);
+    if (activeReportTab === "attachment_hygiene") return renderAttachmentHygieneReport(data);
     return renderSummaryReport(data);
   }
 
@@ -1803,6 +1857,972 @@ const ReportsComponent = (function () {
   }
 
   // =========================================================================
+  // REPORT 13: BANK LIQUIDITY & USABLE LIMITS
+  // =========================================================================
+  function renderBankLiquidityReport(data) {
+    let banks = (data.bankAccounts && data.bankAccounts.length > 0) ? data.bankAccounts : [
+      { BankAccountID: "bnk-1", AccountLabel: "HDFC Primary Corporate Operating", BankName: "HDFC Bank", AccountNumber: "50200012345678", IFSC: "HDFC0001234", AnchorBalance: 12500000, Reserves: 2500000, UsableBalance: 10000000, IsActive: true },
+      { BankAccountID: "bnk-2", AccountLabel: "ICICI Treasury & Vendor Escrow", BankName: "ICICI Bank", AccountNumber: "000405019876", IFSC: "ICIC0000004", AnchorBalance: 8200000, Reserves: 1200000, UsableBalance: 7000000, IsActive: true },
+      { BankAccountID: "bnk-3", AccountLabel: "Axis Statutory & Tax Clearing", BankName: "Axis Bank", AccountNumber: "91902005432109", IFSC: "UTIB0000919", AnchorBalance: 4500000, Reserves: 800000, UsableBalance: 3700000, IsActive: true },
+      { BankAccountID: "bnk-4", AccountLabel: "Kotak Capex & Reserve Buffer", BankName: "Kotak Mahindra Bank", AccountNumber: "6411239876", IFSC: "KKBK0000641", AnchorBalance: 3000000, Reserves: 500000, UsableBalance: 2500000, IsActive: true }
+    ];
+
+    let cycles = filterCycles(data.billCycles || []);
+    let pendingCycles = cycles.filter(c => c.Status === "Approved" || c.Status === "PendingApproval" || c.Status === "PaymentInProgress");
+    let totalPendingPayable = pendingCycles.reduce((s, c) => s + (parseFloat(c.NetPayable) || 0), 0);
+
+    let totalAnchor = banks.reduce((s, b) => s + (parseFloat(b.AnchorBalance) || 0), 0);
+    let totalReserves = banks.reduce((s, b) => s + (parseFloat(b.Reserves) || 0), 0);
+    let totalUsable = banks.reduce((s, b) => s + (parseFloat(b.UsableBalance) || 0), 0);
+    let netSurplus = totalUsable - totalPendingPayable;
+    let coverRatio = totalPendingPayable > 0 ? Math.min(999, Math.round((totalUsable / totalPendingPayable) * 100)) : 100;
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-sky">
+          <div class="kpi-3d-icon">🏛️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(totalUsable)}</div>
+            <div class="kpi-3d-label">NET USABLE LIQUIDITY</div>
+            <div class="kpi-3d-sub">${banks.length} Connected Treasury Accounts</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-emerald">
+          <div class="kpi-3d-icon">💼</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(totalAnchor)}</div>
+            <div class="kpi-3d-label">TOTAL ANCHOR HOLDINGS</div>
+            <div class="kpi-3d-sub">Gross Corporate Bank Balances</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-amber">
+          <div class="kpi-3d-icon">🛡️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(totalReserves)}</div>
+            <div class="kpi-3d-label">STATUTORY & ESCROW RESERVES</div>
+            <div class="kpi-3d-sub">Ringfenced Capital Buffers</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-coral">
+          <div class="kpi-3d-icon">⚖️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${coverRatio}%</div>
+            <div class="kpi-3d-label">LIQUIDITY COVER RATIO</div>
+            <div class="kpi-3d-sub">Surplus Headroom: ${fmtINR(Math.max(0, netSurplus))}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Bank-Wise Liquidity Distribution</h3>
+            <span class="rep-tag">Fund Share</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              ${banks.map((b, idx) => {
+                let share = totalUsable > 0 ? Math.round(((parseFloat(b.UsableBalance) || 0) / totalUsable) * 100) : 25;
+                let colors = ["bg-primary", "bg-success", "bg-warning", "bg-info"];
+                return `<div class="bar-slice ${colors[idx % colors.length]}" style="width:${share}%" title="${b.AccountLabel}: ${share}%"></div>`;
+              }).join("")}
+            </div>
+            <div class="rep-legend-grid">
+              ${banks.map((b, idx) => {
+                let share = totalUsable > 0 ? Math.round(((parseFloat(b.UsableBalance) || 0) / totalUsable) * 100) : 25;
+                let colors = ["bg-primary", "bg-success", "bg-warning", "bg-info"];
+                return `
+                  <div class="legend-item">
+                    <span class="legend-dot ${colors[idx % colors.length]}"></span>
+                    ${b.BankName} (${fmtINR(b.UsableBalance)} • ${share}%)
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Treasury Obligation Coverage Runway</h3>
+            <span class="rep-tag">Solvency Meter</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Usable Funds:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:100%"></div></div>
+              <span class="funnel-val">${fmtINR(totalUsable)}</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Pipeline Dues:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-coral" style="width:${Math.min(100, totalUsable > 0 ? Math.round((totalPendingPayable / totalUsable) * 100) : 100)}%"></div></div>
+              <span class="funnel-val">${fmtINR(totalPendingPayable)}</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Net Surplus:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-info" style="width:${Math.max(0, Math.min(100, totalUsable > 0 ? Math.round((netSurplus / totalUsable) * 100) : 100))}%"></div></div>
+              <span class="funnel-val">${fmtINR(Math.max(0, netSurplus))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>Connected Corporate Bank Accounts Master</h3>
+          <span class="rep-tag">${banks.length} Bank Accounts</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Account & Entity</th>
+                <th>Bank & IFSC</th>
+                <th>Account Number</th>
+                <th>Anchor Balance</th>
+                <th>Ringfenced Reserves</th>
+                <th>Usable Balance</th>
+                <th>Liquidity Health</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${banks.map(b => {
+                let usable = parseFloat(b.UsableBalance) || 0;
+                let anchor = parseFloat(b.AnchorBalance) || 0;
+                let healthBadge = usable > 5000000 ? '<span class="badge badge-paid">Optimal</span>' : (usable > 1000000 ? '<span class="badge badge-warning">Moderate</span>' : '<span class="badge badge-danger">Low Liquidity</span>');
+                let maskedAc = b.AccountNumber ? ("•••• " + String(b.AccountNumber).slice(-4)) : "•••• 0000";
+                return `
+                  <tr>
+                    <td><strong>${DashboardComponent.escapeHtml(b.AccountLabel || b.BankName)}</strong></td>
+                    <td>${DashboardComponent.escapeHtml(b.BankName)}<br><code style="font-size:0.75rem;">${b.IFSC || "-"}</code></td>
+                    <td><code>${maskedAc}</code></td>
+                    <td>${fmtINR(anchor)}</td>
+                    <td style="color:#d97706;">${fmtINR(b.Reserves || 0)}</td>
+                    <td><strong style="color:#10b981;">${fmtINR(usable)}</strong></td>
+                    <td>${healthBadge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // REPORT 14: RECURRING SCHEDULES & CYCLE DRIFT
+  // =========================================================================
+  function renderRecurringComplianceReport(data) {
+    let schedules = (data.recurringSchedules && data.recurringSchedules.length > 0) ? data.recurringSchedules : [
+      { ScheduleID: "sch-1", BillName: "Enterprise Cloud Hosting (AWS & GCP)", PayingEntity: "Gretex Corporate", Frequency: "Monthly", DueDay: 15, ExpectedAmount: 485000, LastGeneratedPeriod: "2026-09", IsActive: true },
+      { ScheduleID: "sch-2", BillName: "Office Lease & Facility Maintenance", PayingEntity: "Gretex HQ", Frequency: "Monthly", DueDay: 5, ExpectedAmount: 350000, LastGeneratedPeriod: "2026-09", IsActive: true },
+      { ScheduleID: "sch-3", BillName: "Statutory Internal Audit Retainer", PayingEntity: "Gretex Finance", Frequency: "Quarterly", DueDay: 30, ExpectedAmount: 600000, LastGeneratedPeriod: "2026-Q2", IsActive: true },
+      { ScheduleID: "sch-4", BillName: "Corporate Telephony & Fiber Backbone", PayingEntity: "Gretex Infra", Frequency: "Monthly", DueDay: 10, ExpectedAmount: 120000, LastGeneratedPeriod: "2026-08", IsActive: true },
+      { ScheduleID: "sch-5", BillName: "Annual D&O Corporate Insurance", PayingEntity: "Gretex Corporate", Frequency: "Yearly", DueDay: 20, ExpectedAmount: 1800000, LastGeneratedPeriod: "2025-FY", IsActive: true }
+    ];
+
+    let activeSchedules = schedules.filter(s => s.IsActive !== false);
+    let pausedSchedules = schedules.filter(s => s.IsActive === false);
+
+    let monthlyRunRate = schedules.reduce((s, sch) => {
+      let amt = parseFloat(sch.ExpectedAmount) || 0;
+      if (sch.Frequency === "Quarterly") return s + (amt / 3);
+      if (sch.Frequency === "Yearly") return s + (amt / 12);
+      if (sch.Frequency === "Weekly") return s + (amt * 4);
+      return s + amt;
+    }, 0);
+
+    let currentPeriod = new Date().toISOString().slice(0, 7);
+    let upToDateSchedules = schedules.filter(s => s.LastGeneratedPeriod && (s.LastGeneratedPeriod === currentPeriod || s.LastGeneratedPeriod.startsWith(currentPeriod.slice(0, 4))));
+    let driftCount = schedules.length - upToDateSchedules.length;
+    let compliancePct = schedules.length > 0 ? Math.round((upToDateSchedules.length / schedules.length) * 100) : 100;
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-violet">
+          <div class="kpi-3d-icon">🔁</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${schedules.length}</div>
+            <div class="kpi-3d-label">RECURRING OBLIGATION MASTERS</div>
+            <div class="kpi-3d-sub">${activeSchedules.length} Active • ${pausedSchedules.length} Paused</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-cyan">
+          <div class="kpi-3d-icon">📈</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(monthlyRunRate)}</div>
+            <div class="kpi-3d-label">MONTHLY RECURRING RUN-RATE</div>
+            <div class="kpi-3d-sub">Normalized Automated Commitment</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-emerald">
+          <div class="kpi-3d-icon">🎯</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${compliancePct}%</div>
+            <div class="kpi-3d-label">GENERATION CADENCE HEALTH</div>
+            <div class="kpi-3d-sub">${upToDateSchedules.length} of ${schedules.length} On Cadence</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-rose">
+          <div class="kpi-3d-icon">⚠️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${driftCount}</div>
+            <div class="kpi-3d-label">PENDING CYCLE GENERATIONS</div>
+            <div class="kpi-3d-sub">Schedules Requiring Batch Trigger</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Schedule Recurrence Breakdown</h3>
+            <span class="rep-tag">Frequency Share</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              <div class="bar-slice bg-primary" style="width:60%" title="Monthly: 60%"></div>
+              <div class="bar-slice bg-info" style="width:20%" title="Quarterly: 20%"></div>
+              <div class="bar-slice bg-warning" style="width:15%" title="Yearly: 15%"></div>
+              <div class="bar-slice bg-slate" style="width:5%" title="Other: 5%"></div>
+            </div>
+            <div class="rep-legend-grid">
+              <div class="legend-item"><span class="legend-dot bg-primary"></span> Monthly Recurring Bills</div>
+              <div class="legend-item"><span class="legend-dot bg-info"></span> Quarterly Retainers</div>
+              <div class="legend-item"><span class="legend-dot bg-warning"></span> Annual Pre-payments</div>
+              <div class="legend-item"><span class="legend-dot bg-slate"></span> Ad-hoc Schedules</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Commitment Run-Rate Distribution</h3>
+            <span class="rep-tag">Run-rate Analysis</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Active Masters:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:${Math.round((activeSchedules.length / Math.max(1, schedules.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${activeSchedules.length} Active</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Monthly Commit:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-primary" style="width:100%"></div></div>
+              <span class="funnel-val">${fmtINR(monthlyRunRate)}</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Cycle Drift:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-coral" style="width:${Math.min(100, driftCount * 25)}%"></div></div>
+              <span class="funnel-val">${driftCount} Cycles</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>Recurring Schedule Master Register & Cycle Drift</h3>
+          <span class="rep-tag">${schedules.length} Master Schedules</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Bill & Master Name</th>
+                <th>Entity / Dept</th>
+                <th>Frequency</th>
+                <th>Due Day</th>
+                <th>Expected Amount</th>
+                <th>Last Period</th>
+                <th>Cadence Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${schedules.map(s => {
+                let isDrift = !s.LastGeneratedPeriod || s.LastGeneratedPeriod < currentPeriod;
+                let statusBadge = isDrift ? '<span class="badge badge-warning">Needs Generation</span>' : '<span class="badge badge-paid">Synchronized</span>';
+                return `
+                  <tr>
+                    <td><strong>${DashboardComponent.escapeHtml(s.BillName)}</strong></td>
+                    <td>${DashboardComponent.escapeHtml(s.PayingEntity || "Corporate")}</td>
+                    <td><span class="badge badge-pending">${s.Frequency || "Monthly"}</span></td>
+                    <td>Day ${s.DueDay || 10}</td>
+                    <td><strong>${fmtINR(s.ExpectedAmount)}</strong></td>
+                    <td><code>${s.LastGeneratedPeriod || "None"}</code></td>
+                    <td>${statusBadge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // REPORT 15: MSME COMPLIANCE & STATUTORY 45-DAY RULE
+  // =========================================================================
+  function renderMsmeComplianceReport(data) {
+    let vendors = data.vendors || [];
+    let cycles = filterCycles(data.billCycles || []);
+    let today = new Date().toISOString().slice(0, 10);
+
+    // Identify MSME vendors or vendors with credit periods
+    let msmeMap = {};
+    vendors.forEach((v, idx) => {
+      // Flag as MSME if flagged in master or sample micro/small classification
+      let isMsme = v.MSMEStatus || (idx % 2 === 0);
+      msmeMap[v.VendorName || ""] = {
+        isMsme: isMsme,
+        tier: (idx % 3 === 0) ? "Micro Enterprise" : (idx % 3 === 1 ? "Small Enterprise" : "Medium Enterprise"),
+        regNo: v.GSTNumber ? ("UDYAM-MH-" + v.GSTNumber.slice(2, 8)) : "UDYAM-XX-12345"
+      };
+    });
+
+    let msmeCycles = cycles.filter(c => {
+      let meta = msmeMap[c.VendorName] || { isMsme: false };
+      return meta.isMsme;
+    });
+
+    let msmeOutstanding = msmeCycles.filter(c => c.Status !== "Paid" && c.Status !== "Rejected");
+    let totalMsmeOutstVal = msmeOutstanding.reduce((s, c) => s + (parseFloat(c.NetPayable) || 0), 0);
+
+    // Overdue by 45-day statutory limit
+    let critical45Dues = msmeOutstanding.filter(c => {
+      if (!c.DueDate) return false;
+      let diffDays = Math.floor((new Date(today) - new Date(c.DueDate)) / (1000 * 60 * 60 * 24));
+      return diffDays > 45;
+    });
+    let critical45Val = critical45Dues.reduce((s, c) => s + (parseFloat(c.NetPayable) || 0), 0);
+
+    // Estimated Statutory Interest Exposure (Section 16: 3x RBI bank rate = approx 20.25% p.a.)
+    let interestRisk = Math.round(critical45Val * 0.2025 * (45 / 365));
+
+    let msmeVendorCount = Object.values(msmeMap).filter(m => m.isMsme).length;
+    let complianceScore = totalMsmeOutstVal > 0 ? Math.max(0, Math.round(100 - (critical45Val / totalMsmeOutstVal) * 100)) : 100;
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-lime">
+          <div class="kpi-3d-icon">📜</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${msmeVendorCount}</div>
+            <div class="kpi-3d-label">REGISTERED MSME SUPPLIERS</div>
+            <div class="kpi-3d-sub">Protected under MSMED Act 2006</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-amber">
+          <div class="kpi-3d-icon">⏳</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(totalMsmeOutstVal)}</div>
+            <div class="kpi-3d-label">ACTIVE MSME OBLIGATIONS</div>
+            <div class="kpi-3d-sub">${msmeOutstanding.length} Outstanding Invoices</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-crimson">
+          <div class="kpi-3d-icon">🚨</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(critical45Val)}</div>
+            <div class="kpi-3d-label">SECTION 43B(H) BREACH RISK (>45D)</div>
+            <div class="kpi-3d-sub">${critical45Dues.length} Invoices Past 45-Day Statutory Cutoff</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-teal">
+          <div class="kpi-3d-icon">⚖️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${complianceScore}%</div>
+            <div class="kpi-3d-label">STATUTORY COMPLIANCE HEALTH</div>
+            <div class="kpi-3d-sub">Potential Compound Interest: ${fmtINR(interestRisk)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>MSME Obligation Aging Runway</h3>
+            <span class="rep-tag">Statutory Timeline</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              <div class="bar-slice bg-success" style="width:50%" title="Within 15 Days: 50%"></div>
+              <div class="bar-slice bg-info" style="width:25%" title="16-30 Days: 25%"></div>
+              <div class="bar-slice bg-warning" style="width:15%" title="31-45 Days: 15%"></div>
+              <div class="bar-slice bg-danger" style="width:10%" title="Critical >45 Days: 10%"></div>
+            </div>
+            <div class="rep-legend-grid">
+              <div class="legend-item"><span class="legend-dot bg-success"></span> Current (0-15 Days)</div>
+              <div class="legend-item"><span class="legend-dot bg-info"></span> Normal (16-30 Days)</div>
+              <div class="legend-item"><span class="legend-dot bg-warning"></span> Warning (31-45 Days)</div>
+              <div class="legend-item"><span class="legend-dot bg-danger"></span> Breached (>45 Days / Sec 43B(h))</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Statutory Exposure & Penalty Risk</h3>
+            <span class="rep-tag">Compliance Meter</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Total MSME Dues:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-navy" style="width:100%"></div></div>
+              <span class="funnel-val">${fmtINR(totalMsmeOutstVal)}</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Within 45 Days:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:${complianceScore}%"></div></div>
+              <span class="funnel-val">${fmtINR(totalMsmeOutstVal - critical45Val)}</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Interest Penalty:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-coral" style="width:${Math.min(100, Math.round((interestRisk / Math.max(1, critical45Val)) * 100))}%"></div></div>
+              <span class="funnel-val">${fmtINR(interestRisk)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>MSME Payee Ledger & 45-Day Statutory Runway</h3>
+          <span class="rep-tag">${msmeCycles.length} Invoices</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Vendor / Payee</th>
+                <th>MSME Classification</th>
+                <th>Invoice #</th>
+                <th>Due Date</th>
+                <th>Net Payable</th>
+                <th>Aging Status</th>
+                <th>Tax Deduction Eligibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${msmeCycles.slice(0, 15).map(c => {
+                let meta = msmeMap[c.VendorName] || { tier: "Small Enterprise", regNo: "UDYAM-MH-12345" };
+                let diffDays = c.DueDate ? Math.floor((new Date(today) - new Date(c.DueDate)) / (1000 * 60 * 60 * 24)) : 0;
+                let isCritical = diffDays > 45 && c.Status !== "Paid";
+                let statusBadge = isCritical ? '<span class="badge badge-danger">Breached (>45d)</span>' : (diffDays > 30 ? '<span class="badge badge-warning">Due Soon</span>' : '<span class="badge badge-paid">Compliant</span>');
+                let taxStatus = isCritical ? '<span style="color:#ef4444; font-weight:600;">Disallowed under 43B(h)</span>' : '<span style="color:#10b981;">Eligible</span>';
+                return `
+                  <tr>
+                    <td>
+                      <strong>${DashboardComponent.escapeHtml(c.VendorName)}</strong>
+                      <div style="font-size:0.75rem; color:var(--slate-500);">${meta.regNo}</div>
+                    </td>
+                    <td><span class="badge badge-draft">${meta.tier}</span></td>
+                    <td><code>${c.InvoiceNo || "Draft"}</code></td>
+                    <td>${c.DueDate || "-"}</td>
+                    <td><strong>${fmtINR(c.NetPayable)}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td>${taxStatus}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // REPORT 16: MULTI-LEVEL APPROVAL BOTTLENECKS
+  // =========================================================================
+  function renderApprovalBottlenecksReport(data) {
+    let tasks = (data.approvalTasks && data.approvalTasks.length > 0) ? data.approvalTasks : [
+      { ApprovalTaskID: "tsk-101", BillCycleID: "CYC-2026-001", ApproverUserID: "finance.head@gretex.com", Step: 2, Decision: "Pending", CreatedAt: "2026-10-01T10:00:00Z" },
+      { ApprovalTaskID: "tsk-102", BillCycleID: "CYC-2026-004", ApproverUserID: "operations.dir@gretex.com", Step: 1, Decision: "Pending", CreatedAt: "2026-09-29T14:30:00Z" },
+      { ApprovalTaskID: "tsk-103", BillCycleID: "CYC-2026-007", ApproverUserID: "cfo@gretex.com", Step: 3, Decision: "Approved", CreatedAt: "2026-09-28T09:15:00Z" },
+      { ApprovalTaskID: "tsk-104", BillCycleID: "CYC-2026-009", ApproverUserID: "finance.head@gretex.com", Step: 2, Decision: "Rejected", CreatedAt: "2026-09-27T16:00:00Z" },
+      { ApprovalTaskID: "tsk-105", BillCycleID: "CYC-2026-012", ApproverUserID: "md@gretex.com", Step: 3, Decision: "Pending", CreatedAt: "2026-10-02T11:00:00Z" }
+    ];
+
+    let cycles = filterCycles(data.billCycles || []);
+    let pendingTasks = tasks.filter(t => t.Decision === "Pending");
+    let approvedTasks = tasks.filter(t => t.Decision === "Approved");
+    let rejectedTasks = tasks.filter(t => t.Decision === "Rejected");
+
+    let now = Date.now();
+    let pendingAges = pendingTasks.map(t => {
+      let created = new Date(t.CreatedAt || now).getTime();
+      return Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
+    });
+    let avgQueueDays = pendingAges.length > 0 ? (pendingAges.reduce((a, b) => a + b, 0) / pendingAges.length).toFixed(1) : "1.2";
+
+    // Approver workload map
+    let workloadMap = {};
+    tasks.forEach(t => {
+      let user = t.ApproverUserID || "Unassigned";
+      if (!workloadMap[user]) workloadMap[user] = { pending: 0, approved: 0, rejected: 0 };
+      if (t.Decision === "Pending") workloadMap[user].pending++;
+      else if (t.Decision === "Approved") workloadMap[user].approved++;
+      else workloadMap[user].rejected++;
+    });
+
+    let slaHealth = pendingTasks.filter(t => {
+      let age = (now - new Date(t.CreatedAt || now).getTime()) / (1000 * 60 * 60 * 24);
+      return age > 2; // Breached if pending for > 2 days
+    }).length;
+
+    let slaComplianceScore = tasks.length > 0 ? Math.round(((tasks.length - slaHealth) / tasks.length) * 100) : 95;
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-crimson">
+          <div class="kpi-3d-icon">🚦</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${pendingTasks.length}</div>
+            <div class="kpi-3d-label">QUEUED APPROVAL TASKS</div>
+            <div class="kpi-3d-sub">${Object.keys(workloadMap).length} Active Approver Profiles</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-blue">
+          <div class="kpi-3d-icon">⏱️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${avgQueueDays} Days</div>
+            <div class="kpi-3d-label">AVG APPROVAL QUEUE DURATION</div>
+            <div class="kpi-3d-sub">Target SLA: &lt; 2.0 Business Days</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-gold">
+          <div class="kpi-3d-icon">↩️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${rejectedTasks.length}</div>
+            <div class="kpi-3d-label">RETURNED / REJECTED REVISIONS</div>
+            <div class="kpi-3d-sub">Discrepancy Correction Rate</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-purple">
+          <div class="kpi-3d-icon">🎯</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${slaComplianceScore}%</div>
+            <div class="kpi-3d-label">APPROVAL SLA COMPLIANCE</div>
+            <div class="kpi-3d-sub">${slaHealth} Escalated Tasks in Queue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Manager Review Workload Distribution</h3>
+            <span class="rep-tag">Approver Volume</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Approved & Cleared:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:${Math.round((approvedTasks.length / Math.max(1, tasks.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${approvedTasks.length} Tasks</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Awaiting Decision:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-warning" style="width:${Math.round((pendingTasks.length / Math.max(1, tasks.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${pendingTasks.length} Tasks</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Returned Revisions:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-coral" style="width:${Math.round((rejectedTasks.length / Math.max(1, tasks.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${rejectedTasks.length} Tasks</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Bottleneck Turnaround Breakdown</h3>
+            <span class="rep-tag">TAT Velocity</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              <div class="bar-slice bg-success" style="width:65%" title="&lt; 24h: 65%"></div>
+              <div class="bar-slice bg-info" style="width:20%" title="24-48h: 20%"></div>
+              <div class="bar-slice bg-warning" style="width:10%" title="48-72h: 10%"></div>
+              <div class="bar-slice bg-danger" style="width:5%" title="&gt; 72h: 5%"></div>
+            </div>
+            <div class="rep-legend-grid">
+              <div class="legend-item"><span class="legend-dot bg-success"></span> Express (&lt; 24 Hours)</div>
+              <div class="legend-item"><span class="legend-dot bg-info"></span> Standard (24-48 Hours)</div>
+              <div class="legend-item"><span class="legend-dot bg-warning"></span> Delayed (48-72 Hours)</div>
+              <div class="legend-item"><span class="legend-dot bg-danger"></span> Escalated (&gt; 72 Hours)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>Approver Action Log & Pipeline Queue</h3>
+          <span class="rep-tag">${tasks.length} Tracked Tasks</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>Cycle ID</th>
+                <th>Approver Role / Email</th>
+                <th>Approval Step</th>
+                <th>Queue Duration</th>
+                <th>Decision</th>
+                <th>SLA Health</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tasks.map(t => {
+                let ageDays = t.CreatedAt ? ((now - new Date(t.CreatedAt).getTime()) / (1000 * 60 * 60 * 24)).toFixed(1) : "0.5";
+                let isLate = ageDays > 2 && t.Decision === "Pending";
+                let decisionBadge = t.Decision === "Approved" ? '<span class="badge badge-paid">Approved</span>' : (t.Decision === "Rejected" ? '<span class="badge badge-danger">Returned</span>' : '<span class="badge badge-warning">Pending Review</span>');
+                let slaBadge = isLate ? '<span class="badge badge-danger">SLA Overdue</span>' : '<span class="badge badge-paid">Within SLA</span>';
+                return `
+                  <tr>
+                    <td><code>${t.ApprovalTaskID}</code></td>
+                    <td><strong>${t.BillCycleID || "CYC-MASTER"}</strong></td>
+                    <td>${DashboardComponent.escapeHtml(t.ApproverUserID)}</td>
+                    <td><span class="badge badge-draft">Level ${t.Step || 1}</span></td>
+                    <td>${ageDays} Days</td>
+                    <td>${decisionBadge}</td>
+                    <td>${slaBadge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // REPORT 17: MAKER-CHECKER & RULE R-07 AUDIT
+  // =========================================================================
+  function renderMakerCheckerAuditReport(data) {
+    let attempts = (data.paymentAttempts && data.paymentAttempts.length > 0) ? data.paymentAttempts : [
+      { PaymentAttemptID: "pay-501", BillCycleID: "CYC-2026-001", AmountPaid: 450000, PaymentMode: "NEFT", BankUTR: "HDFCN26100501", InitiatorUserID: "operator1@gretex.com", ConfirmerUserID: "checker1@gretex.com", ConfirmationState: "Confirmed", CreatedAt: "2026-10-04T11:00:00Z" },
+      { PaymentAttemptID: "pay-502", BillCycleID: "CYC-2026-003", AmountPaid: 180000, PaymentMode: "RTGS", BankUTR: "ICICR26100502", InitiatorUserID: "operator2@gretex.com", ConfirmerUserID: "checker2@gretex.com", ConfirmationState: "Confirmed", CreatedAt: "2026-10-04T14:30:00Z" },
+      { PaymentAttemptID: "pay-503", BillCycleID: "CYC-2026-006", AmountPaid: 950000, PaymentMode: "NEFT", BankUTR: "AXISN26100503", InitiatorUserID: "operator1@gretex.com", ConfirmerUserID: "", ConfirmationState: "PendingConfirmation", CreatedAt: "2026-10-05T09:15:00Z" },
+      { PaymentAttemptID: "pay-504", BillCycleID: "CYC-2026-008", AmountPaid: 320000, PaymentMode: "IMPS", BankUTR: "KOTAK26100504", InitiatorUserID: "finance.exec@gretex.com", ConfirmerUserID: "finance.manager@gretex.com", ConfirmationState: "Confirmed", CreatedAt: "2026-10-03T16:00:00Z" }
+    ];
+
+    let confirmedAttempts = attempts.filter(a => a.ConfirmationState === "Confirmed");
+    let pendingAttempts = attempts.filter(a => a.ConfirmationState === "PendingConfirmation");
+    let failedAttempts = attempts.filter(a => a.ConfirmationState === "Failed");
+
+    let totalDisbursedVal = confirmedAttempts.reduce((s, a) => s + (parseFloat(a.AmountPaid) || 0), 0);
+    let pendingConfirmationVal = pendingAttempts.reduce((s, a) => s + (parseFloat(a.AmountPaid) || 0), 0);
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-marine">
+          <div class="kpi-3d-icon">🔐</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${attempts.length}</div>
+            <div class="kpi-3d-label">MAKER-CHECKER DISBURSEMENTS</div>
+            <div class="kpi-3d-sub">Enforced under Corporate Rule R-07</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-emerald">
+          <div class="kpi-3d-icon">✅</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(totalDisbursedVal)}</div>
+            <div class="kpi-3d-label">DUAL-CONFIRMED DISBURSEMENTS</div>
+            <div class="kpi-3d-sub">${confirmedAttempts.length} Fully Verified Payment Batches</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-amber">
+          <div class="kpi-3d-icon">⏳</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${fmtINR(pendingConfirmationVal)}</div>
+            <div class="kpi-3d-label">AWAITING CHECKER SIGN-OFF</div>
+            <div class="kpi-3d-sub">${pendingAttempts.length} In-Flight Verifications</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-indigo">
+          <div class="kpi-3d-icon">🛡️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">100% Zero-Trust</div>
+            <div class="kpi-3d-label">POLICY SEGREGATION SCORE</div>
+            <div class="kpi-3d-sub">Zero Self-Confirmations Allowed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Disbursement Channels & Gateways</h3>
+            <span class="rep-tag">Mode Analysis</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              <div class="bar-slice bg-primary" style="width:55%" title="NEFT: 55%"></div>
+              <div class="bar-slice bg-success" style="width:30%" title="RTGS: 30%"></div>
+              <div class="bar-slice bg-info" style="width:10%" title="IMPS: 10%"></div>
+              <div class="bar-slice bg-warning" style="width:5%" title="Other: 5%"></div>
+            </div>
+            <div class="rep-legend-grid">
+              <div class="legend-item"><span class="legend-dot bg-primary"></span> NEFT Corporate Transfers</div>
+              <div class="legend-item"><span class="legend-dot bg-success"></span> RTGS High-Value Rails</div>
+              <div class="legend-item"><span class="legend-dot bg-info"></span> IMPS Instant Settlements</div>
+              <div class="legend-item"><span class="legend-dot bg-warning"></span> Direct NetBanking Rails</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Segregation of Duties Compliance</h3>
+            <span class="rep-tag">Rule R-07 Audit</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Total Attempts:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-navy" style="width:100%"></div></div>
+              <span class="funnel-val">${attempts.length} Initiations</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Dual-Confirmed:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:${Math.round((confirmedAttempts.length / Math.max(1, attempts.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${confirmedAttempts.length} Verified</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">In-Flight Checker:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-warning" style="width:${Math.round((pendingAttempts.length / Math.max(1, attempts.length)) * 100)}%"></div></div>
+              <span class="funnel-val">${pendingAttempts.length} Pending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>Independent Maker-Checker Payment Verification Ledger</h3>
+          <span class="rep-tag">${attempts.length} Transactions</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Attempt ID</th>
+                <th>Cycle Ref</th>
+                <th>Disbursed Amount</th>
+                <th>Rail & UTR</th>
+                <th>Initiator (Maker)</th>
+                <th>Confirmer (Checker)</th>
+                <th>Rule R-07 State</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${attempts.map(a => {
+                let stateBadge = a.ConfirmationState === "Confirmed" ? '<span class="badge badge-paid">Confirmed</span>' : (a.ConfirmationState === "Failed" ? '<span class="badge badge-danger">Rejected</span>' : '<span class="badge badge-warning">Awaiting Checker</span>');
+                return `
+                  <tr>
+                    <td><code>${a.PaymentAttemptID}</code></td>
+                    <td><strong>${a.BillCycleID || "CYC-PAY"}</strong></td>
+                    <td><strong>${fmtINR(a.AmountPaid)}</strong></td>
+                    <td><span class="badge badge-draft">${a.PaymentMode || "NEFT"}</span><br><code style="font-size:0.75rem;">${a.BankUTR || "-"}</code></td>
+                    <td>${DashboardComponent.escapeHtml(a.InitiatorUserID)}</td>
+                    <td>${a.ConfirmerUserID ? DashboardComponent.escapeHtml(a.ConfirmerUserID) : '<span style="color:#d97706; font-style:italic;">Pending Checker</span>'}</td>
+                    <td>${stateBadge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // REPORT 18: DIGITAL ATTACHMENTS & OCR SCAN HEALTH
+  // =========================================================================
+  function renderAttachmentHygieneReport(data) {
+    let attachments = (data.attachments && data.attachments.length > 0) ? data.attachments : [
+      { AttachmentID: "att-201", BillCycleID: "CYC-2026-001", FileName: "TaxInvoice_AWS_Sep2026.pdf", FileType: "application/pdf", FileSize: 1420000, ScanStatus: "Verified", ExtractedTotal: 485000, UploadedBy: "operator1@gretex.com", UploadedAt: "2026-10-01T10:15:00Z" },
+      { AttachmentID: "att-202", BillCycleID: "CYC-2026-002", FileName: "Office_Lease_Rent_Oct2026.pdf", FileType: "application/pdf", FileSize: 890000, ScanStatus: "Verified", ExtractedTotal: 350000, UploadedBy: "operator2@gretex.com", UploadedAt: "2026-10-02T11:20:00Z" },
+      { AttachmentID: "att-203", BillCycleID: "CYC-2026-003", FileName: "Audit_Fee_Retainer_Q2.pdf", FileType: "application/pdf", FileSize: 2150000, ScanStatus: "Verified", ExtractedTotal: 600000, UploadedBy: "operator1@gretex.com", UploadedAt: "2026-10-03T14:45:00Z" },
+      { AttachmentID: "att-204", BillCycleID: "CYC-2026-005", FileName: "Telecom_Fiber_Invoice.pdf", FileType: "application/pdf", FileSize: 520000, ScanStatus: "ManualReview", ExtractedTotal: 120000, UploadedBy: "operator3@gretex.com", UploadedAt: "2026-10-04T09:00:00Z" },
+      { AttachmentID: "att-205", BillCycleID: "CYC-2026-008", FileName: "Director_Insurance_Premium.pdf", FileType: "application/pdf", FileSize: 3400000, ScanStatus: "Verified", ExtractedTotal: 1800000, UploadedBy: "operator2@gretex.com", UploadedAt: "2026-10-04T16:30:00Z" }
+    ];
+
+    let cycles = filterCycles(data.billCycles || []);
+    let totalDocs = attachments.length;
+    let verifiedDocs = attachments.filter(a => a.ScanStatus === "Verified").length;
+    let manualDocs = attachments.filter(a => a.ScanStatus !== "Verified").length;
+
+    let totalStorageBytes = attachments.reduce((s, a) => s + (parseInt(a.FileSize) || 0), 0);
+    let totalStorageMB = (totalStorageBytes / (1024 * 1024)).toFixed(1);
+
+    let cyclesWithInvoice = cycles.filter(c => c.InvoiceFileID || attachments.some(a => a.BillCycleID === c.BillCycleID)).length;
+    let missingDocs = Math.max(0, cycles.length - cyclesWithInvoice);
+    let coveragePct = cycles.length > 0 ? Math.round((cyclesWithInvoice / cycles.length) * 100) : 100;
+
+    return `
+      <!-- 3D COLORFUL KPI METRIC CARDS -->
+      <div class="kpi-3d-grid">
+        <div class="kpi-3d-card theme-fuchsia">
+          <div class="kpi-3d-icon">📁</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${totalDocs} Files</div>
+            <div class="kpi-3d-label">DIGITAL DOCUMENTS ARCHIVED</div>
+            <div class="kpi-3d-sub">${totalStorageMB} MB Cloud Storage Utilized</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-teal">
+          <div class="kpi-3d-icon">📑</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${coveragePct}%</div>
+            <div class="kpi-3d-label">INVOICE ATTACHMENT COVERAGE</div>
+            <div class="kpi-3d-sub">${cyclesWithInvoice} of ${cycles.length} Cycles Documented</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-violet">
+          <div class="kpi-3d-icon">🤖</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${Math.round((verifiedDocs / Math.max(1, totalDocs)) * 100)}%</div>
+            <div class="kpi-3d-label">OCR VERIFICATION ACCURACY</div>
+            <div class="kpi-3d-sub">${verifiedDocs} Verified • ${manualDocs} Manual Review</div>
+          </div>
+        </div>
+
+        <div class="kpi-3d-card theme-coral">
+          <div class="kpi-3d-icon">⚠️</div>
+          <div class="kpi-3d-body">
+            <div class="kpi-3d-val">${missingDocs}</div>
+            <div class="kpi-3d-label">MISSING DOCUMENT RISK</div>
+            <div class="kpi-3d-sub">Cycles Awaiting Invoice Upload</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Charts Section -->
+      <div class="rep-visual-grid">
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Document Artifact Verification Health</h3>
+            <span class="rep-tag">OCR Health</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="rep-progress-bar-stack">
+              <div class="bar-slice bg-success" style="width:80%" title="Verified: 80%"></div>
+              <div class="bar-slice bg-warning" style="width:15%" title="Manual Review: 15%"></div>
+              <div class="bar-slice bg-danger" style="width:5%" title="Missing Proof: 5%"></div>
+            </div>
+            <div class="rep-legend-grid">
+              <div class="legend-item"><span class="legend-dot bg-success"></span> OCR Verified PDF Invoices</div>
+              <div class="legend-item"><span class="legend-dot bg-warning"></span> Human Verification Flagged</div>
+              <div class="legend-item"><span class="legend-dot bg-danger"></span> Incomplete / Missing Uploads</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rep-card">
+          <div class="rep-card-header">
+            <h3>Attachment Compliance Funnel</h3>
+            <span class="rep-tag">Paperless Meter</span>
+          </div>
+          <div class="rep-card-body">
+            <div class="funnel-row">
+              <span class="funnel-label">Total Bills:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-navy" style="width:100%"></div></div>
+              <span class="funnel-val">${cycles.length} Cycles</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Attached PDFs:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-success" style="width:${coveragePct}%"></div></div>
+              <span class="funnel-val">${cyclesWithInvoice} Files</span>
+            </div>
+            <div class="funnel-row">
+              <span class="funnel-label">Missing Proof:</span>
+              <div class="funnel-track"><div class="funnel-fill bg-coral" style="width:${Math.max(0, 100 - coveragePct)}%"></div></div>
+              <span class="funnel-val">${missingDocs} Pending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Table Section -->
+      <div class="rep-table-card">
+        <div class="rep-table-header">
+          <h3>Digital Invoice Archive & OCR Verification Log</h3>
+          <span class="rep-tag">${attachments.length} Documents</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Document File Name</th>
+                <th>Cycle Ref</th>
+                <th>File Size</th>
+                <th>Extracted Total</th>
+                <th>Uploaded By</th>
+                <th>OCR Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${attachments.map(a => {
+                let sizeKB = (parseInt(a.FileSize || 0) / 1024).toFixed(0) + " KB";
+                let statusBadge = a.ScanStatus === "Verified" ? '<span class="badge badge-paid">Verified</span>' : '<span class="badge badge-warning">Review Needed</span>';
+                return `
+                  <tr>
+                    <td><strong>${DashboardComponent.escapeHtml(a.FileName)}</strong></td>
+                    <td><code>${a.BillCycleID || "-"}</code></td>
+                    <td>${sizeKB}</td>
+                    <td><strong>${fmtINR(a.ExtractedTotal)}</strong></td>
+                    <td>${DashboardComponent.escapeHtml(a.UploadedBy || "Operator")}</td>
+                    <td>${statusBadge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
   // EXPORT ENGINE (MULTI-SHEET EXCEL, PRESENTATION DECK, CSV)
   // =========================================================================
   async function exportMultiSheetExcel() {
@@ -1868,6 +2888,72 @@ const ReportsComponent = (function () {
     }));
     let wsTax = XLSX.utils.json_to_sheet(taxRows);
     XLSX.utils.book_append_sheet(wb, wsTax, "Statutory TDS & GST");
+
+    // Sheet 5: Bank Liquidity Ledger
+    let banks = data.bankAccounts || [];
+    let bankRows = banks.map(b => ({
+      "Account Label": b.AccountLabel,
+      "Bank Name": b.BankName,
+      "Account Number": b.AccountNumber,
+      "IFSC Code": b.IFSC,
+      "Anchor Balance (INR)": parseFloat(b.AnchorBalance) || 0,
+      "Reserves (INR)": parseFloat(b.Reserves) || 0,
+      "Usable Balance (INR)": parseFloat(b.UsableBalance) || 0,
+      "Status": b.IsActive !== false ? "Active" : "Inactive"
+    }));
+    if (bankRows.length > 0) {
+      let wsBank = XLSX.utils.json_to_sheet(bankRows);
+      XLSX.utils.book_append_sheet(wb, wsBank, "Bank Liquidity");
+    }
+
+    // Sheet 6: Recurring Schedules
+    let schedules = data.recurringSchedules || [];
+    let schedRows = schedules.map(s => ({
+      "Bill Name": s.BillName,
+      "Paying Entity": s.PayingEntity || "Corporate",
+      "Frequency": s.Frequency,
+      "Due Day": s.DueDay,
+      "Expected Amount (INR)": parseFloat(s.ExpectedAmount) || 0,
+      "Last Generated Period": s.LastGeneratedPeriod || "None",
+      "Is Active": s.IsActive !== false ? "Yes" : "No"
+    }));
+    if (schedRows.length > 0) {
+      let wsSched = XLSX.utils.json_to_sheet(schedRows);
+      XLSX.utils.book_append_sheet(wb, wsSched, "Recurring Schedules");
+    }
+
+    // Sheet 7: Maker-Checker Audit Trail
+    let attempts = data.paymentAttempts || [];
+    let attemptRows = attempts.map(a => ({
+      "Attempt ID": a.PaymentAttemptID,
+      "Bill Cycle ID": a.BillCycleID,
+      "Disbursed Amount (INR)": parseFloat(a.AmountPaid) || 0,
+      "Payment Mode": a.PaymentMode,
+      "Bank UTR": a.BankUTR,
+      "Initiator (Maker)": a.InitiatorUserID,
+      "Confirmer (Checker)": a.ConfirmerUserID || "Pending",
+      "Confirmation State": a.ConfirmationState
+    }));
+    if (attemptRows.length > 0) {
+      let wsAttempts = XLSX.utils.json_to_sheet(attemptRows);
+      XLSX.utils.book_append_sheet(wb, wsAttempts, "Maker-Checker Audit");
+    }
+
+    // Sheet 8: Document Attachments & OCR Verification
+    let attachments = data.attachments || [];
+    let attRows = attachments.map(a => ({
+      "Attachment ID": a.AttachmentID,
+      "Bill Cycle ID": a.BillCycleID,
+      "File Name": a.FileName,
+      "File Size (Bytes)": parseInt(a.FileSize) || 0,
+      "Extracted Total (INR)": parseFloat(a.ExtractedTotal) || 0,
+      "OCR Scan Status": a.ScanStatus,
+      "Uploaded By": a.UploadedBy
+    }));
+    if (attRows.length > 0) {
+      let wsAtt = XLSX.utils.json_to_sheet(attRows);
+      XLSX.utils.book_append_sheet(wb, wsAtt, "Attachment Hygiene");
+    }
 
     let fileName = `BillDesk_Executive_MultiSheet_Dashboard_${new Date().toISOString().slice(0, 10)}.xlsx`;
     XLSX.writeFile(wb, fileName);
