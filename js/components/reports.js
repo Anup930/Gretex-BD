@@ -1045,10 +1045,10 @@ const ReportsComponent = (function () {
               ${cycles.length === 0 ? `<tr><td colspan="7" class="text-center" style="padding:2rem;">No bill cycles match the selected criteria.</td></tr>` : 
                 cycles.map(c => `
                   <tr>
-                    <td><strong>${c.VendorName || "Vendor"}</strong><br><small style="color:var(--slate-500);">${c.PeriodName || ""}</small></td>
+                    <td><strong>${c.VendorName || "Vendor"}</strong><br><small style="color:var(--slate-500);">${DashboardComponent.formatPeriod(c.PeriodKey || c.PeriodName || "")}</small></td>
                     <td>${c.CompanyName || "Company"}</td>
                     <td><span class="badge badge-light">${c.CategoryName || "General"}</span></td>
-                    <td>${c.DueDate || "—"}</td>
+                    <td>${DashboardComponent.formatDate(c.DueDate)}</td>
                     <td><code>${c.InvoiceNo || "Draft"}</code></td>
                     <td style="text-align:right; font-weight:700;">${fmtINR(c.NetPayable)}</td>
                     <td><span class="status-badge status-${(c.Status || 'draft').toLowerCase()}">${c.Status || "Draft"}</span></td>
@@ -1213,9 +1213,9 @@ const ReportsComponent = (function () {
                   let diff = Math.round((new Date(today) - new Date(c.DueDate)) / 86400000);
                   return `
                     <tr>
-                      <td><strong>${c.VendorName}</strong><br><small>${c.PeriodName || ""}</small></td>
+                      <td><strong>${c.VendorName}</strong><br><small>${DashboardComponent.formatPeriod(c.PeriodKey || c.PeriodName || "")}</small></td>
                       <td>${c.CompanyName}</td>
-                      <td><span style="color:#dc2626; font-weight:700;">${c.DueDate}</span></td>
+                      <td><span style="color:#dc2626; font-weight:700;">${DashboardComponent.formatDate(c.DueDate)}</span></td>
                       <td><span class="badge badge-danger">${diff} Days Late</span></td>
                       <td style="text-align:right; font-weight:700; color:#dc2626;">${fmtINR(c.NetPayable)}</td>
                       <td><span class="status-badge status-${(c.Status || 'draft').toLowerCase()}">${c.Status}</span></td>
@@ -1690,7 +1690,7 @@ const ReportsComponent = (function () {
               ${[...w7, ...w15, ...w30].length === 0 ? `<tr><td colspan="6" class="text-center" style="padding:2rem;">No pending scheduled disbursements in the next 30 days.</td></tr>` : 
                 [...w7, ...w15, ...w30].sort((a,b) => (a.DueDate || '').localeCompare(b.DueDate || '')).map(c => `
                   <tr>
-                    <td><strong>${c.DueDate}</strong></td>
+                    <td><strong>${DashboardComponent.formatDate(c.DueDate)}</strong></td>
                     <td>${c.VendorName}</td>
                     <td>${c.CompanyName}</td>
                     <td><span class="badge ${c.DueDate <= new Date(Date.now() + 7*86400000).toISOString().slice(0,10) ? 'badge-danger' : 'badge-info'}">
@@ -1768,7 +1768,7 @@ const ReportsComponent = (function () {
                     <td><code>${c.InvoiceNo || "Draft"}</code></td>
                     <td><strong>${c.VendorName}</strong></td>
                     <td>${c.CompanyName}</td>
-                    <td>${c.CreatedAt ? new Date(c.CreatedAt).toLocaleDateString() : "—"}</td>
+                    <td>${DashboardComponent.formatDate(c.CreatedAt)}</td>
                     <td style="text-align:right; font-weight:700;">${fmtINR(c.NetPayable)}</td>
                     <td><span class="badge badge-warning">Awaiting Approver</span></td>
                   </tr>
@@ -1840,7 +1840,7 @@ const ReportsComponent = (function () {
               ${attempts.length === 0 ? 
                 paidCycles.map(c => `
                   <tr>
-                    <td>${c.PaidDate || c.DueDate || "Settled"}</td>
+                    <td>${c.PaidDate ? DashboardComponent.formatDate(c.PaidDate) : (c.DueDate ? DashboardComponent.formatDate(c.DueDate) : "Settled")}</td>
                     <td><span class="badge badge-light">NEFT</span></td>
                     <td><code>${c.UTRNumber || "UTR-" + c.CycleID}</code></td>
                     <td style="text-align:right; font-weight:700; color:#059669;">${fmtINR(c.NetPayable)}</td>
@@ -1849,7 +1849,7 @@ const ReportsComponent = (function () {
                 `).join("") || `<tr><td colspan="5" class="text-center" style="padding:2rem;">No payment transactions recorded yet.</td></tr>` : 
                 attempts.map(a => `
                   <tr>
-                    <td>${a.InitiatedAt ? new Date(a.InitiatedAt).toLocaleString() : "—"}</td>
+                    <td>${DashboardComponent.formatDateTime(a.InitiatedAt)}</td>
                     <td><span class="badge badge-light">${a.PaymentMode || "NEFT"}</span></td>
                     <td><code>${a.UTRNumber || "PENDING_UTR"}</code></td>
                     <td style="text-align:right; font-weight:700; color:#059669;">${fmtINR(a.Amount)}</td>
@@ -2166,7 +2166,7 @@ const ReportsComponent = (function () {
                     <td><code>${c.CycleID}</code></td>
                     <td><strong>${c.VendorName}</strong></td>
                     <td>${c.CompanyName}</td>
-                    <td>${c.DueDate || "Missing"}</td>
+                    <td>${c.DueDate ? DashboardComponent.formatDate(c.DueDate) : "Missing"}</td>
                     <td><span style="color:#d97706;">Missing official vendor invoice number; stored as draft.</span></td>
                     <td><span class="badge badge-warning">Medium</span></td>
                   </tr>
@@ -2660,7 +2660,7 @@ const ReportsComponent = (function () {
                     </td>
                     <td><span class="badge badge-draft">${meta.tier}</span></td>
                     <td><code>${c.InvoiceNo || "Draft"}</code></td>
-                    <td>${c.DueDate || "-"}</td>
+                    <td>${DashboardComponent.formatDate(c.DueDate)}</td>
                     <td><strong>${fmtINR(c.NetPayable)}</strong></td>
                     <td>${statusBadge}</td>
                     <td>${taxStatus}</td>
@@ -3164,7 +3164,7 @@ const ReportsComponent = (function () {
       "Vendor / Payee": c.VendorName,
       "Group Company": c.CompanyName,
       "Expense Category": c.CategoryName,
-      "Due Date": c.DueDate,
+      "Due Date": DashboardComponent.formatDate(c.DueDate),
       "Invoice Number": c.InvoiceNo || "Draft",
       "Gross Amount (INR)": parseFloat(c.BillAmount) || 0,
       "GST Amount (INR)": parseFloat(c.GSTAmount) || 0,
@@ -3348,7 +3348,7 @@ const ReportsComponent = (function () {
       "Vendor / Payee": c.VendorName,
       "Group Company": c.CompanyName,
       "Category": c.CategoryName,
-      "Due Date": c.DueDate,
+      "Due Date": DashboardComponent.formatDate(c.DueDate),
       "Invoice Number": c.InvoiceNo || "Draft",
       "Gross Amount (INR)": parseFloat(c.BillAmount) || 0,
       "GST Amount (INR)": parseFloat(c.GSTAmount) || 0,

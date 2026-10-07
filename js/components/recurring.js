@@ -81,7 +81,7 @@ const RecurringComponent = (function () {
                       ${s.DueInDays ? `<div style="font-size:0.7rem; color:var(--slate-500);">+${s.DueInDays} days</div>` : ""}
                     </td>
                     <td><strong>₹${(parseFloat(s.ExpectedAmount) || 0).toLocaleString("en-IN")}</strong></td>
-                    <td><span class="badge badge-draft">${s.LastGeneratedPeriod || "None"}</span></td>
+                    <td><span class="badge badge-draft">${DashboardComponent.formatPeriod(s.LastGeneratedPeriod) || "None"}</span></td>
                     <td>
                       ${s.IsActive !== false ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-draft">Paused</span>'}
                     </td>

@@ -53,10 +53,10 @@ const OperatorComponent = (function () {
                 <tr>
                   <td>
                     <strong>${DashboardComponent.escapeHtml(c.BillName)}</strong>
-                    <div style="font-size:0.75rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(c.VendorName)} • Period: ${c.PeriodKey}</div>
+                    <div style="font-size:0.75rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(c.VendorName)} • Period: ${DashboardComponent.formatPeriod(c.PeriodKey)}</div>
                   </td>
                   <td>${DashboardComponent.escapeHtml(c.CompanyName || "-")}</td>
-                  <td>${c.DueDate || "-"}</td>
+                  <td>${DashboardComponent.formatDate(c.DueDate)}</td>
                   <td>₹${(parseFloat(c.ExpectedAmount) || 0).toLocaleString("en-IN")}</td>
                   <td>
                     ${c.ActualAmount > 0 ? `<strong>₹${parseFloat(c.ActualAmount).toLocaleString("en-IN")}</strong>` : '<span style="color:var(--status-incomplete-text); font-weight:600;">Pending Entry</span>'}
@@ -96,8 +96,8 @@ const OperatorComponent = (function () {
         <div class="modal-dialog modal-lg">
           <div class="modal-header">
             <div>
-              <div class="modal-title">${DashboardComponent.escapeHtml(cycle.BillName)} (${cycle.PeriodKey})</div>
-              <div style="font-size:0.8rem; color:var(--slate-500);">${cycle.VendorName} • Due: ${cycle.DueDate}</div>
+              <div class="modal-title">${DashboardComponent.escapeHtml(cycle.BillName)} (${DashboardComponent.formatPeriod(cycle.PeriodKey)})</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(cycle.VendorName)} • Due: ${DashboardComponent.formatDate(cycle.DueDate)}</div>
             </div>
             <button class="modal-close-btn" onclick="App.closeModal('operator-modal')">&times;</button>
           </div>
@@ -135,7 +135,7 @@ const OperatorComponent = (function () {
                     </div>
                     <div class="form-group">
                       <label class="form-label">Invoice Date</label>
-                      <input type="date" id="op-invoice-date" class="form-control" value="${cycle.InvoiceDate || ""}">
+                      <input type="date" id="op-invoice-date" class="form-control" value="${DashboardComponent.formatDateInput(cycle.InvoiceDate)}">
                     </div>
                   </div>
 

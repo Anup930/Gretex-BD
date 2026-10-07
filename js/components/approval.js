@@ -56,8 +56,8 @@ const ApprovalComponent = (function () {
                       <div style="font-size:0.75rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(c.VendorName)}</div>
                     </td>
                     <td>${DashboardComponent.escapeHtml(c.CompanyName || "-")}</td>
-                    <td><span class="badge badge-draft">${c.PeriodKey}</span></td>
-                    <td>${c.DueDate || "-"}</td>
+                    <td><span class="badge badge-draft">${DashboardComponent.formatPeriod(c.PeriodKey)}</span></td>
+                    <td>${DashboardComponent.formatDate(c.DueDate)}</td>
                     <td><strong>₹${(parseFloat(c.ActualAmount) || 0).toLocaleString("en-IN")}</strong></td>
                     <td>${c.InvoiceNumber || "-"}</td>
                     <td>
@@ -101,7 +101,7 @@ const ApprovalComponent = (function () {
           <div class="modal-header">
             <div>
               <div class="modal-title">Approval Review: ${DashboardComponent.escapeHtml(cycle.BillName)}</div>
-              <div style="font-size:0.8rem; color:var(--slate-500);">${cycle.VendorName} • Period: ${cycle.PeriodKey} • Due: ${cycle.DueDate}</div>
+              <div style="font-size:0.8rem; color:var(--slate-500);">${cycle.VendorName} • Period: ${DashboardComponent.formatPeriod(cycle.PeriodKey)} • Due: ${DashboardComponent.formatDate(cycle.DueDate)}</div>
             </div>
             <button class="modal-close-btn" onclick="App.closeModal('approval-modal')">&times;</button>
           </div>
@@ -132,7 +132,7 @@ const ApprovalComponent = (function () {
                   </tr>
                   <tr style="border-bottom:1px solid var(--slate-200); height:30px;">
                     <td style="color:var(--slate-500);">Invoice Date:</td>
-                    <td style="font-weight:600; text-align:right;">${cycle.InvoiceDate || "-"}</td>
+                    <td style="font-weight:600; text-align:right;">${DashboardComponent.formatDate(cycle.InvoiceDate)}</td>
                   </tr>
                   <tr style="border-bottom:1px solid var(--slate-200); height:30px;">
                     <td style="color:var(--slate-500);">Taxable Value:</td>
@@ -185,7 +185,7 @@ const ApprovalComponent = (function () {
                       ${pastCycles.length === 0 ? `<tr><td colspan="4" style="text-align:center; color:var(--slate-400); padding:0.75rem;">No prior payment history for this recurring schedule.</td></tr>` : ""}
                       ${pastCycles.map(p => `
                         <tr>
-                          <td>${p.PeriodKey}</td>
+                          <td>${DashboardComponent.formatPeriod(p.PeriodKey)}</td>
                           <td>${p.InvoiceNumber || "-"}</td>
                           <td>₹${(parseFloat(p.ActualAmount) || 0).toLocaleString("en-IN")}</td>
                           <td><span class="badge badge-paid">${p.Status}</span></td>

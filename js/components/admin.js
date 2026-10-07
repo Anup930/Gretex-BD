@@ -94,7 +94,7 @@ const AdminComponent = (function () {
                   <td>
                     ${u.IsActive !== false ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-rejected">Deactivated</span>'}
                   </td>
-                  <td style="font-size:0.75rem; color:var(--slate-500);">${u.LastLogin ? new Date(u.LastLogin).toLocaleDateString() : "Never"}</td>
+                  <td style="font-size:0.75rem; color:var(--slate-500);">${u.LastLogin ? DashboardComponent.formatDateTime(u.LastLogin) : "Never"}</td>
                   <td>
                     <button class="btn btn-xs btn-secondary" onclick="AdminComponent.editUser('${u.UserID}')">Edit</button>
                   </td>

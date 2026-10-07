@@ -68,7 +68,7 @@ const PaymentComponent = (function () {
                     </td>
                     <td><strong>₹${(parseFloat(a.AmountPaid) || 0).toLocaleString("en-IN")}</strong></td>
                     <td><code>${DashboardComponent.escapeHtml(a.BankReference)}</code></td>
-                    <td>${a.PaymentDate}</td>
+                    <td>${DashboardComponent.formatDate(a.PaymentDate)}</td>
                     <td>
                       <span class="badge badge-paid">Screenshot / UTR</span>
                     </td>
@@ -120,8 +120,8 @@ const PaymentComponent = (function () {
                     <div style="font-size:0.75rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(c.VendorName)}</div>
                   </td>
                   <td>${DashboardComponent.escapeHtml(c.CompanyName || "-")}</td>
-                  <td><span class="badge badge-draft">${c.PeriodKey}</span></td>
-                  <td>${c.DueDate || "-"}</td>
+                  <td><span class="badge badge-draft">${DashboardComponent.formatPeriod(c.PeriodKey)}</span></td>
+                  <td>${DashboardComponent.formatDate(c.DueDate)}</td>
                   <td><strong>₹${(parseFloat(c.NetPayable) || 0).toLocaleString("en-IN")}</strong></td>
                   <td>${DashboardComponent.renderStatusBadge(c.Status)}</td>
                   <td>

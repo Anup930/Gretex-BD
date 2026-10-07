@@ -120,8 +120,8 @@ const DashboardComponent = (function () {
                     <div style="font-size:0.75rem; color:var(--slate-500);">${escapeHtml(c.VendorName || "")}</div>
                   </td>
                   <td>${escapeHtml(c.CompanyName || "-")}</td>
-                  <td><span class="badge badge-draft">${escapeHtml(c.PeriodKey || "")}</span></td>
-                  <td>${c.DueDate || "-"}</td>
+                  <td><span class="badge badge-draft">${escapeHtml(formatPeriod(c.PeriodKey) || "")}</span></td>
+                  <td>${formatDate(c.DueDate)}</td>
                   <td><strong>₹${(parseFloat(c.NetPayable) || parseFloat(c.ActualAmount) || parseFloat(c.ExpectedAmount) || 0).toLocaleString("en-IN")}</strong></td>
                   <td>${renderStatusBadge(c.Status)}</td>
                   <td>
@@ -172,9 +172,77 @@ const DashboardComponent = (function () {
     return `<span class="badge badge-draft">${escapeHtml(status)}</span>`;
   }
 
+  function formatDate(val) {
+    if (!val || val === "-" || val === "—") return "-";
+    let s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      let [y, m, d] = s.split("-");
+      let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${d.padStart(2, "0")} ${months[parseInt(m, 10) - 1]} ${y}`;
+    }
+    let d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      let day = String(d.getDate()).padStart(2, "0");
+      let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      let month = months[d.getMonth()];
+      let year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    }
+    return s;
+  }
+
+  function formatPeriod(val) {
+    if (!val || val === "-" || val === "—") return "-";
+    let s = String(val).trim();
+    if (/^\d{4}-\d{2}$/.test(s)) {
+      let [y, m] = s.split("-");
+      let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[parseInt(m, 10) - 1]} ${y}`;
+    }
+    let d = new Date(s);
+    if (!isNaN(d.getTime()) && (s.includes("-") || s.includes("T"))) {
+      let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+    return s;
+  }
+
+  function formatDateTime(val) {
+    if (!val || val === "-" || val === "—") return "-";
+    let d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      let day = String(d.getDate()).padStart(2, "0");
+      let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      let month = months[d.getMonth()];
+      let year = d.getFullYear();
+      let hours = d.getHours();
+      let minutes = String(d.getMinutes()).padStart(2, "0");
+      let ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+    }
+    return String(val);
+  }
+
+  function formatDateInput(val) {
+    if (!val || val === "-" || val === "—") return "";
+    let s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    let d = new Date(s);
+    if (isNaN(d.getTime())) return "";
+    let year = d.getFullYear();
+    let month = String(d.getMonth() + 1).padStart(2, "0");
+    let day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   return {
     render: render,
     renderStatusBadge: renderStatusBadge,
-    escapeHtml: escapeHtml
+    escapeHtml: escapeHtml,
+    formatDate: formatDate,
+    formatPeriod: formatPeriod,
+    formatDateTime: formatDateTime,
+    formatDateInput: formatDateInput
   };
 })();

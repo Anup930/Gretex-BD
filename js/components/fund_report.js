@@ -37,10 +37,10 @@ const FundReportComponent = (function () {
       <div style="background:var(--navy-900); color:var(--white); padding:0.85rem 1.25rem; border-radius:var(--radius-md); margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
         <div>
           <span style="font-weight:700; font-size:0.95rem;">Planning Snapshot As Of:</span>
-          <span style="color:var(--navy-100); margin-left:0.35rem;">${currentReportData.reportDate} (IST Asia/Kolkata)</span>
+          <span style="color:var(--navy-100); margin-left:0.35rem;">${DashboardComponent.formatDate(currentReportData.reportDate)} (IST Asia/Kolkata)</span>
         </div>
         <div style="font-size:0.78rem; color:var(--slate-300);">
-          Generated: ${new Date(currentReportData.asOf).toLocaleTimeString()} • Status: Verified Fresh
+          Generated: ${DashboardComponent.formatDateTime(currentReportData.asOf)} • Status: Verified Fresh
         </div>
       </div>
 
@@ -204,8 +204,8 @@ const FundReportComponent = (function () {
         `"${(b.billName || '').replace(/"/g, '""')}"`,
         `"${(b.vendorName || '').replace(/"/g, '""')}"`,
         `"${(b.companyName || '').replace(/"/g, '""')}"`,
-        `"${(b.categoryName || '').replace(/"/g, '""')}"`,
-        `"${b.dueDate || ''}"`,
+        `"${DashboardComponent.escapeHtml(b.categoryName || '')}"`,
+        `"${DashboardComponent.formatDate(b.dueDate)}"`,
         b.amount || 0,
         `"${b.status || ''}"`,
         b.isApproved ? "TRUE" : "FALSE"

@@ -52,15 +52,7 @@ const AuditComponent = (function () {
                 let recType = String((l && l.RecordType) || "-");
                 let reason = String((l && l.Reason) || (typeof (l && l.NewValue) === 'object' ? JSON.stringify(l.NewValue) : ((l && l.NewValue) || "-")));
                 let searchTxt = (email + ' ' + action + ' ' + recType + ' ' + reason + ' ' + recId).toLowerCase();
-                let timeStr = "-";
-                if (l && l.Timestamp) {
-                  try {
-                    let d = new Date(l.Timestamp);
-                    timeStr = isNaN(d.getTime()) ? String(l.Timestamp) : d.toLocaleString("en-IN");
-                  } catch(e) {
-                    timeStr = String(l.Timestamp);
-                  }
-                }
+                let timeStr = DashboardComponent.formatDateTime(l && l.Timestamp);
                 return `
                 <tr data-search="${DashboardComponent.escapeHtml(searchTxt)}">
                   <td style="font-size:0.75rem; white-space:nowrap; color:var(--slate-500);">
