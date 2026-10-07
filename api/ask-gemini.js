@@ -1,4 +1,4 @@
-// Vercel Serverless Function: Secure Gemini AI Financial Analyst
+// Vercel Serverless Function: Secure Gemini AI Financial Analyst (gemini-flash-latest)
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,16 +10,8 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ success: false, error: "GEMINI_API_KEY missing in Vercel" });
 
-  // DIAGNOSTIC GET REQUEST: Shows exact supported models for your key
   if (req.method === "GET") {
-    try {
-      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      const listData = await listRes.json();
-      const modelNames = (listData.models || []).map(m => m.name.replace("models/", ""));
-      return res.status(200).json({ success: true, availableModels: modelNames });
-    } catch (e) {
-      return res.status(500).json({ success: false, error: e.message });
-    }
+    return res.status(200).json({ success: true, message: "AI Analyst Engine Online (gemini-flash-latest)" });
   }
 
   if (req.method !== "POST") return res.status(405).json({ success: false, error: "Method not allowed" });
@@ -30,10 +22,11 @@ export default async function handler(req, res) {
 
     const systemPrompt = `You are the Gretex BillDesk Senior Financial AI Analyst.
 Company: Gretex Group (Treasury & Corporate Accounts).
-Tone: Highly professional, executive, financial controller.
-Provide clear numbers in INR, statutory MSME 45-day warnings, and working capital advice.
+Tone: Highly professional, proactive, executive financial controller.
+Respond in clear, structured format (English or natural Hinglish matching user prompt).
+Always provide actionable insights, concrete INR (₹) numbers, statutory MSME 45-day warnings, and working capital advice.
 
-LIVE FINANCIAL CONTEXT:
+LIVE SYSTEM FINANCIAL CONTEXT:
 ${financialContext ? JSON.stringify(financialContext, null, 2) : "Standard treasury context"}
 
 USER QUESTION:
@@ -41,20 +34,20 @@ ${question}
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 {
-  "reply": "Your clear conversational explanation with markdown bullet points.",
+  "reply": "Your clear conversational explanation formatted with markdown bullet points.",
   "kpiCards": [
-    { "title": "Metric Name", "value": "₹...", "sub": "Note", "status": "success" }
+    { "title": "Metric Name", "value": "₹...", "sub": "Brief context", "status": "success|warning|danger" }
   ],
   "chart": {
-    "type": "bar",
-    "title": "Summary Chart",
-    "labels": ["Approved", "Liquidity", "Overdue"],
-    "values": [100, 200, 50]
+    "type": "bar|pie|none",
+    "title": "Chart Title",
+    "labels": ["Label 1", "Label 2"],
+    "values": [100, 200]
   }
 }`;
 
-    // Target the latest gemini-3.8-flash model
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    // Official perpetual alias: gemini-flash-latest
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: "POST",
@@ -76,7 +69,7 @@ OUTPUT FORMAT (STRICT JSON ONLY):
       parsed = { reply: rawText, kpiCards: [], chart: { type: "none" } };
     }
 
-    return res.status(200).json({ success: true, data: parsed });
+    return res.status(200).json({ success: true, modelUsed: "gemini-flash-latest", data: parsed });
 
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
