@@ -20,7 +20,7 @@ Company: Gretex Group (Treasury & Accounts). Tone: Highly professional, executiv
 Provide clear numbers in INR, statutory MSME 45-day warnings, and working capital advice.
 
 LIVE FINANCIAL CONTEXT:
-${financialContext ? JSON.stringify(financialContext, null, 2) : "Standard context"}
+${financialContext ? JSON.stringify(financialContext, null, 2) : "Standard treasury context"}
 
 USER QUESTION:
 ${question}
@@ -39,24 +39,38 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   }
 }`;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    // const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    // Target the required gemini-3.8-flash model
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: "application/json" }
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: systemPrompt }]
+          }
+        ]
       })
     });
 
     const data = await response.json();
-    if (data.error) return res.status(500).json({ success: false, error: data.error.message });
+
+    if (data.error) {
+      return res.status(500).json({ success: false, error: data.error.message });
+    }
 
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    return res.status(200).json({ success: true, data: JSON.parse(cleanJson) });
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch (e) {
+      parsed = { reply: rawText, kpiCards: [], chart: { type: "none" } };
+    }
+
+    return res.status(200).json({ success: true, data: parsed });
 
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
