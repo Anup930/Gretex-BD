@@ -52,7 +52,8 @@ const RecurringComponent = (function () {
                 <th>Bill Name</th>
                 <th>Company</th>
                 <th>Category</th>
-                <th>Frequency & Due Day</th>
+                <th>Frequency</th>
+                <th>Gen Day → Due Day</th>
                 <th>Expected Amount</th>
                 <th>Last Period</th>
                 <th>Status</th>
@@ -60,7 +61,7 @@ const RecurringComponent = (function () {
               </tr>
             </thead>
             <tbody>
-              ${schedules.length === 0 ? `<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--slate-400);">No recurring schedules defined. Click "+ Create Recurring Schedule" to add one.</td></tr>` : ""}
+              ${schedules.length === 0 ? `<tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--slate-400);">No recurring schedules defined. Click "+ Create Recurring Schedule" to add one.</td></tr>` : ""}
               ${schedules.map(s => {
                 let comp = (cachedData.companies || []).find(c => c.CompanyID === s.CompanyID);
                 let cat = (cachedData.categories || []).find(c => c.CategoryID === s.CategoryID);
@@ -72,7 +73,13 @@ const RecurringComponent = (function () {
                     </td>
                     <td>${comp ? DashboardComponent.escapeHtml(comp.CompanyName) : "-"}</td>
                     <td><span class="badge badge-draft">${cat ? DashboardComponent.escapeHtml(cat.CategoryName) : "-"}</span></td>
-                    <td>${s.Frequency} (Day ${s.DueDay || 10})</td>
+                    <td><span class="badge badge-draft">${s.Frequency}</span></td>
+                    <td>
+                      <span style="font-weight:700;">Day ${s.GenerationDay || s.DueDay || 10}</span>
+                      <span style="color:var(--slate-400); margin:0 2px;">→</span>
+                      <span style="font-weight:700; color:#059669;">Day ${(s.GenerationDay || s.DueDay || 10) + (s.DueInDays || 0)}</span>
+                      ${s.DueInDays ? `<div style="font-size:0.7rem; color:var(--slate-500);">+${s.DueInDays} days</div>` : ""}
+                    </td>
                     <td><strong>₹${(parseFloat(s.ExpectedAmount) || 0).toLocaleString("en-IN")}</strong></td>
                     <td><span class="badge badge-draft">${s.LastGeneratedPeriod || "None"}</span></td>
                     <td>
@@ -118,83 +125,164 @@ const RecurringComponent = (function () {
     let vendors = cachedData.vendors || [];
     let categories = cachedData.categories || [];
 
+    let initialAmount = schedule ? (parseFloat(schedule.ExpectedAmount) || 0) : 25000;
+    let initialGenDay = schedule ? (schedule.GenerationDay || schedule.DueDay || 10) : 10;
+    let initialDueIn = schedule ? (schedule.DueInDays || 10) : 10;
+    let initialFreq = schedule ? schedule.Frequency : "Monthly";
+
     let modalHtml = `
-      <div class="modal-backdrop active" id="schedule-modal">
-        <div class="modal-dialog">
-          <div class="modal-header">
-            <div class="modal-title">${schedule ? "Edit Recurring Schedule" : "Create Recurring Schedule"}</div>
-            <button class="modal-close-btn" onclick="App.closeModal('schedule-modal')">&times;</button>
-          </div>
-          <div class="modal-body">
-            <form id="schedule-form" onsubmit="RecurringComponent.saveSchedule(event, '${scheduleId || ""}')">
-              <div class="form-group">
-                <label class="form-label">Bill / Obligation Name *</label>
-                <input type="text" id="sch-billname" class="form-control" required value="${schedule ? DashboardComponent.escapeHtml(schedule.BillName) : ""}" placeholder="e.g., Airtel Broadband Bandra">
+      <div class="modal-backdrop active" id="schedule-modal" style="padding: 1rem;">
+        <div class="modal-dialog sch-split-modal" style="position:relative;">
+          <div class="sch-split-wrapper">
+            <!-- Left Gradient Sidebar with Live Intel Preview -->
+            <div class="sch-sidebar">
+              <div class="sch-sidebar-icon">⚡</div>
+              <div class="sch-sidebar-title">${schedule ? "Edit Schedule" : "Create Recurring Schedule"}</div>
+              <div class="sch-sidebar-desc">
+                Set it once. BillDesk automatically triggers bill generation and computes statutory due dates every period.
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Company (Paying Entity) *</label>
-                  <select id="sch-company" class="form-select" required>
-                    <option value="">Select Company</option>
-                    ${companies.map(c => `<option value="${c.CompanyID}" ${schedule && schedule.CompanyID === c.CompanyID ? "selected" : ""}>${DashboardComponent.escapeHtml(c.CompanyName)}</option>`).join("")}
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Vendor *</label>
-                  <select id="sch-vendor" class="form-select" required>
-                    <option value="">Select Vendor</option>
-                    ${vendors.map(v => `<option value="${v.VendorID}" ${schedule && schedule.VendorID === v.VendorID ? "selected" : ""}>${DashboardComponent.escapeHtml(v.VendorName)}</option>`).join("")}
-                  </select>
-                </div>
-              </div>
+              <!-- Real-time Live Preview Card -->
+              <div class="sch-live-preview">
+                <div class="sch-preview-label">Live Preview</div>
+                <div class="sch-preview-amount" id="sch-prev-amount">₹${initialAmount.toLocaleString("en-IN")}</div>
+                <div class="sch-preview-amount-sub" id="sch-prev-freq-sub">per ${initialFreq.toLowerCase()} • Day ${initialGenDay} → Day ${initialGenDay + initialDueIn}</div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Category / Expense Head *</label>
-                  <select id="sch-category" class="form-select" required>
-                    <option value="">Select Category</option>
-                    ${categories.map(cat => `<option value="${cat.CategoryID}" ${schedule && schedule.CategoryID === cat.CategoryID ? "selected" : ""}>${DashboardComponent.escapeHtml(cat.CategoryName)}</option>`).join("")}
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Expected Amount (₹) *</label>
-                  <input type="number" id="sch-amount" class="form-control" required step="0.01" value="${schedule ? schedule.ExpectedAmount : ""}" placeholder="25000">
+                <div class="sch-preview-meta">
+                  <div class="sch-preview-row">
+                    <span class="label">Bill Cycle Day</span>
+                    <span class="value" id="sch-prev-gen">Day ${initialGenDay}</span>
+                  </div>
+                  <div class="sch-preview-row">
+                    <span class="label">Payment Due</span>
+                    <span class="value" id="sch-prev-due">Day ${initialGenDay + initialDueIn}</span>
+                  </div>
+                  <div class="sch-preview-row">
+                    <span class="label">Yearly Outflow</span>
+                    <span class="value" id="sch-prev-yearly">₹${(initialAmount * 12).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div class="sch-preview-row">
+                    <span class="label">Paying Entity</span>
+                    <span class="value" id="sch-prev-entity">${schedule ? DashboardComponent.escapeHtml(schedule.CompanyName || "Not selected") : "Select company"}</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Frequency *</label>
-                  <select id="sch-frequency" class="form-select" required>
-                    <option value="Monthly" ${!schedule || schedule.Frequency === "Monthly" ? "selected" : ""}>Monthly</option>
-                    <option value="Weekly" ${schedule && schedule.Frequency === "Weekly" ? "selected" : ""}>Weekly</option>
-                    <option value="Quarterly" ${schedule && schedule.Frequency === "Quarterly" ? "selected" : ""}>Quarterly</option>
-                    <option value="Yearly" ${schedule && schedule.Frequency === "Yearly" ? "selected" : ""}>Yearly</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Due Day of Month (1 - 31)</label>
-                  <input type="number" id="sch-dueday" class="form-control" min="1" max="31" value="${schedule ? (schedule.DueDay || 10) : 10}">
-                </div>
+              <div style="font-size:0.62rem; color:rgba(255,255,255,0.55); margin-top:1rem; line-height:1.4;">
+                🔒 Compliant with Corporate Governance & MSME 45-day statutory timelines.
               </div>
+            </div>
 
-              <div class="form-group">
-                <label class="form-label">Notes & GL Reference</label>
-                <input type="text" id="sch-notes" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.Notes || "") : ""}" placeholder="e.g. Contract No. 49204, Cost Centre 102">
-              </div>
+            <!-- Right Form Panel -->
+            <div class="sch-form-panel" style="position:relative;">
+              <button type="button" class="modal-close-btn" onclick="App.closeModal('schedule-modal')" style="position:absolute; top:1rem; right:1.25rem;">&times;</button>
 
-              <div class="modal-footer" style="margin: 1.5rem -1.5rem -1.5rem -1.5rem;">
-                <button type="button" class="btn btn-secondary" onclick="App.closeModal('schedule-modal')">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="m-sch-submit-btn">${schedule ? 'Update Schedule' : 'Save Schedule'}</button>
-              </div>
-            </form>
+              <form id="schedule-form" onsubmit="RecurringComponent.saveSchedule(event, '${scheduleId || ""}')">
+                
+                <!-- SECTION 1: BASIC DETAILS -->
+                <div class="sch-section-label sec-blue">
+                  <span class="sec-dot"></span> BASIC DETAILS & ENTITY MAPPING
+                </div>
+
+                <div class="form-group" style="margin-bottom:0.75rem;">
+                  <label class="form-label">Bill / Obligation Name *</label>
+                  <input type="text" id="sch-billname" class="form-control" required value="${schedule ? DashboardComponent.escapeHtml(schedule.BillName) : ""}" placeholder="e.g. Airtel Broadband Bandra" oninput="RecurringComponent.updateDuePreview()">
+                </div>
+
+                <div class="sch-form-row cols-2">
+                  <div class="form-group">
+                    <label class="form-label">Company (Paying Entity) *</label>
+                    <select id="sch-company" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                      <option value="">Select Company</option>
+                      ${companies.map(c => `<option value="${c.CompanyID}" ${schedule && schedule.CompanyID === c.CompanyID ? "selected" : ""}>${DashboardComponent.escapeHtml(c.CompanyName)}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Vendor (Payee) *</label>
+                    <select id="sch-vendor" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                      <option value="">Select Vendor</option>
+                      ${vendors.map(v => `<option value="${v.VendorID}" ${schedule && schedule.VendorID === v.VendorID ? "selected" : ""}>${DashboardComponent.escapeHtml(v.VendorName)}</option>`).join("")}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="sch-form-row cols-2">
+                  <div class="form-group">
+                    <label class="form-label">Category / Expense Head *</label>
+                    <select id="sch-category" class="form-select" required>
+                      <option value="">Select Category</option>
+                      ${categories.map(cat => `<option value="${cat.CategoryID}" ${schedule && schedule.CategoryID === cat.CategoryID ? "selected" : ""}>${DashboardComponent.escapeHtml(cat.CategoryName)}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Expected Amount (₹) *</label>
+                    <input type="number" id="sch-amount" class="form-control" required step="0.01" value="${schedule ? schedule.ExpectedAmount : "25000"}" placeholder="25000" oninput="RecurringComponent.updateDuePreview()">
+                  </div>
+                </div>
+
+                <!-- SECTION 2: BILLING CYCLE & DUE RULES -->
+                <div class="sch-section-label sec-teal">
+                  <span class="sec-dot"></span> BILLING CYCLE & DUE SCHEDULE
+                </div>
+
+                <div class="sch-form-row cols-3">
+                  <div class="form-group">
+                    <label class="form-label">Frequency *</label>
+                    <select id="sch-frequency" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                      <option value="Monthly" ${!schedule || schedule.Frequency === "Monthly" ? "selected" : ""}>Monthly</option>
+                      <option value="Weekly" ${schedule && schedule.Frequency === "Weekly" ? "selected" : ""}>Weekly</option>
+                      <option value="Quarterly" ${schedule && schedule.Frequency === "Quarterly" ? "selected" : ""}>Quarterly</option>
+                      <option value="Yearly" ${schedule && schedule.Frequency === "Yearly" ? "selected" : ""}>Yearly</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Bill Generation Day *</label>
+                    <select id="sch-genday" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                      ${Array.from({length: 30}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.GenerationDay || schedule.DueDay || 10) : 10) == d ? "selected" : ""}>Day ${d}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Due In (Days) *</label>
+                    <select id="sch-duein" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                      ${Array.from({length: 28}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.DueInDays || 10) : 10) == d ? "selected" : ""}>+ ${d} Days</option>`).join("")}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="sch-due-preview-bar" id="sch-due-preview">
+                  <span style="font-size:1rem;">🗓️</span>
+                  <span id="sch-due-preview-text">Bill generates on Day ${initialGenDay} → Due on Day ${initialGenDay + initialDueIn} of the month (+${initialDueIn} days)</span>
+                </div>
+
+                <!-- SECTION 3: REFERENCE & AUDIT -->
+                <div class="sch-section-label sec-amber">
+                  <span class="sec-dot"></span> REFERENCE & AUDIT TRAIL
+                </div>
+
+                <div class="form-group" style="margin-bottom:1.25rem;">
+                  <label class="form-label">Notes & GL / PO Reference</label>
+                  <input type="text" id="sch-notes" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.Notes || "") : ""}" placeholder="e.g. Contract No. 49204, Cost Centre 102, PO #8812">
+                </div>
+
+                <div class="sch-form-footer">
+                  <div class="sch-footer-note">
+                    Fields marked * are mandatory. Calculation auto-syncs with backend schedules.
+                  </div>
+                  <div class="sch-footer-actions">
+                    <button type="button" class="btn btn-secondary" onclick="App.closeModal('schedule-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="m-sch-submit-btn">${schedule ? 'Update Schedule' : 'Save Schedule'}</button>
+                  </div>
+                </div>
+
+              </form>
+            </div>
           </div>
         </div>
       </div>
     `;
 
     document.getElementById("modal-container").innerHTML = modalHtml;
+    updateDuePreview();
   }
 
   async function saveSchedule(e, scheduleId) {
@@ -205,7 +293,9 @@ const RecurringComponent = (function () {
     let categoryId = document.getElementById("sch-category").value;
     let expectedAmount = parseFloat(document.getElementById("sch-amount").value) || 0;
     let frequency = document.getElementById("sch-frequency").value;
-    let dueDay = parseInt(document.getElementById("sch-dueday").value, 10) || 10;
+    let generationDay = parseInt(document.getElementById("sch-genday").value, 10) || 10;
+    let dueInDays = parseInt(document.getElementById("sch-duein").value, 10) || 10;
+    let dueDay = generationDay + dueInDays; // Computed due day (can exceed 30 = next month)
     let notes = document.getElementById("sch-notes").value.trim();
 
     let comp = (cachedData.companies || []).find(c => c.CompanyID === companyId);
@@ -223,7 +313,9 @@ const RecurringComponent = (function () {
       CategoryName: cat ? cat.CategoryName : "",
       ExpectedAmount: expectedAmount,
       Frequency: frequency,
-      DueRule: "FixedDay",
+      DueRule: "GenerationPlusDays",
+      GenerationDay: generationDay,
+      DueInDays: dueInDays,
       DueDay: dueDay,
       Currency: "INR",
       InvoiceDeadlineDays: 5,
@@ -283,7 +375,8 @@ const RecurringComponent = (function () {
       "Category Name",
       "Expected Amount",
       "Frequency",
-      "Due Day",
+      "Generation Day",
+      "Due In Days",
       "Notes"
     ],
     sample: [
@@ -295,6 +388,7 @@ const RecurringComponent = (function () {
         "15000",
         "Monthly",
         "10",
+        "15",
         "Contract #98234"
       ],
       [
@@ -305,6 +399,7 @@ const RecurringComponent = (function () {
         "125000",
         "Monthly",
         "5",
+        "10",
         "Floor 4 Lease"
       ]
     ],
@@ -315,7 +410,8 @@ const RecurringComponent = (function () {
       { label: "Category", key: "CategoryName" },
       { label: "Amount", key: "ExpectedAmountFormatted" },
       { label: "Freq", key: "Frequency" },
-      { label: "Due Day", key: "DueDay" }
+      { label: "Gen Day", key: "GenerationDay" },
+      { label: "Due In", key: "DueInDays" }
     ]
   };
 
@@ -511,7 +607,8 @@ const RecurringComponent = (function () {
       let catInput = r["category name"] || r["category"] || r["expense head"] || "";
       let amountVal = parseFloat(r["expected amount"] || r["amount"] || r["expected"] || 0) || 0;
       let freqVal = r["frequency"] || "Monthly";
-      let dueDayVal = parseInt(r["due day"] || r["due"] || r["day"] || 10, 10) || 10;
+      let genDayVal = parseInt(r["generation day"] || r["gen day"] || r["due day"] || r["day"] || 10, 10) || 10;
+      let dueInVal = parseInt(r["due in days"] || r["due in"] || r["duein"] || 10, 10) || 10;
       let notesVal = r["notes"] || r["note"] || r["gl reference"] || "";
 
       // Match Company
@@ -549,8 +646,10 @@ const RecurringComponent = (function () {
         ExpectedAmount: amountVal,
         ExpectedAmountFormatted: "₹" + amountVal.toLocaleString("en-IN"),
         Frequency: ["Monthly", "Weekly", "Quarterly", "Yearly"].includes(freqVal) ? freqVal : "Monthly",
-        DueRule: "FixedDay",
-        DueDay: (dueDayVal >= 1 && dueDayVal <= 31) ? dueDayVal : 10,
+        DueRule: "GenerationPlusDays",
+        GenerationDay: (genDayVal >= 1 && genDayVal <= 30) ? genDayVal : 10,
+        DueInDays: (dueInVal >= 1 && dueInVal <= 28) ? dueInVal : 10,
+        DueDay: ((genDayVal >= 1 && genDayVal <= 30) ? genDayVal : 10) + ((dueInVal >= 1 && dueInVal <= 28) ? dueInVal : 10),
         Currency: "INR",
         InvoiceDeadlineDays: 5,
         OwnerUserID: BillDeskAuth.getCurrentUser()?.userId || "",
@@ -652,6 +751,56 @@ const RecurringComponent = (function () {
     }
   }
 
+  function updateDuePreview() {
+    let genDay = parseInt(document.getElementById("sch-genday")?.value, 10) || 10;
+    let dueIn = parseInt(document.getElementById("sch-duein")?.value, 10) || 10;
+    let amount = parseFloat(document.getElementById("sch-amount")?.value) || 0;
+    let freq = document.getElementById("sch-frequency")?.value || "Monthly";
+    let compSelect = document.getElementById("sch-company");
+    let compName = compSelect && compSelect.selectedIndex > 0 ? compSelect.options[compSelect.selectedIndex].text : "Select company";
+
+    let computedDue = genDay + dueIn;
+    let previewEl = document.getElementById("sch-due-preview-text");
+    if (previewEl) {
+      if (computedDue > 30) {
+        let spillDays = computedDue - 30;
+        previewEl.textContent = `Bill generates on Day ${genDay} → Due on Day ${spillDays} of next month (+${dueIn} days)`;
+      } else {
+        previewEl.textContent = `Bill generates on Day ${genDay} → Due on Day ${computedDue} of the same month (+${dueIn} days)`;
+      }
+    }
+
+    // Sidebar Live Preview updates
+    let prevAmountEl = document.getElementById("sch-prev-amount");
+    if (prevAmountEl) prevAmountEl.textContent = "₹" + amount.toLocaleString("en-IN");
+
+    let prevFreqSubEl = document.getElementById("sch-prev-freq-sub");
+    if (prevFreqSubEl) {
+      let dueDisplay = computedDue > 30 ? `Day ${computedDue - 30} (Next Mo)` : `Day ${computedDue}`;
+      prevFreqSubEl.textContent = `per ${freq.toLowerCase()} • Day ${genDay} → ${dueDisplay}`;
+    }
+
+    let prevGenEl = document.getElementById("sch-prev-gen");
+    if (prevGenEl) prevGenEl.textContent = `Day ${genDay}`;
+
+    let prevDueEl = document.getElementById("sch-prev-due");
+    if (prevDueEl) {
+      prevDueEl.textContent = computedDue > 30 ? `Day ${computedDue - 30} (+${dueIn}d next mo)` : `Day ${computedDue} (+${dueIn}d)`;
+    }
+
+    let prevYearlyEl = document.getElementById("sch-prev-yearly");
+    if (prevYearlyEl) {
+      let multiplier = 12;
+      if (freq === "Weekly") multiplier = 52;
+      else if (freq === "Quarterly") multiplier = 4;
+      else if (freq === "Yearly") multiplier = 1;
+      prevYearlyEl.textContent = "₹" + (amount * multiplier).toLocaleString("en-IN");
+    }
+
+    let prevEntityEl = document.getElementById("sch-prev-entity");
+    if (prevEntityEl) prevEntityEl.textContent = compName;
+  }
+
   return {
     render: render,
     filterTable: filterTable,
@@ -662,6 +811,7 @@ const RecurringComponent = (function () {
     downloadSampleTemplate: downloadSampleTemplate,
     handleImportFileSelect: handleImportFileSelect,
     handleImportTextPaste: handleImportTextPaste,
-    submitImport: submitImport
+    submitImport: submitImport,
+    updateDuePreview: updateDuePreview
   };
 })();
