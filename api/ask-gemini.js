@@ -1,4 +1,4 @@
-// Vercel Serverless Function: Secure Gemini AI Financial Analyst
+// Vercel Serverless Function: Secure Gemini AI Financial Analyst with Smart Fallback
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     if (!question || !question.trim()) return res.status(400).json({ success: false, error: "Question cannot be empty" });
 
     const systemPrompt = `You are the Gretex BillDesk Senior Financial AI Analyst.
-Company: Gretex Group (Treasury & Accounts). Tone: Highly professional, executive, financial controller.
+Company: Gretex Group (Treasury & Accounts). Tone: Highly professional, executive financial controller.
 Provide clear numbers in INR, statutory MSME 45-day warnings, and working capital advice.
 
 LIVE FINANCIAL CONTEXT:
@@ -39,38 +39,49 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   }
 }`;
 
-    // Target the required gemini-3.8-flash model
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    // Cascading model list to ensure 100% uptime even during Google spikes
+    const modelsToTry = [
+      "gemini-2.0-flash-lite",
+      "gemini-1.5-flash-8b",
+      "gemini-3.8-flash"
+    ];
 
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: systemPrompt }]
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }]
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+          const rawText = data.candidates[0].content.parts[0].text;
+          const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+          let parsed;
+          try {
+            parsed = JSON.parse(cleanJson);
+          } catch (e) {
+            parsed = { reply: rawText, kpiCards: [], chart: { type: "none" } };
           }
-        ]
-      })
-    });
+          return res.status(200).json({ success: true, modelUsed: model, data: parsed });
+        }
 
-    const data = await response.json();
-
-    if (data.error) {
-      return res.status(500).json({ success: false, error: data.error.message });
+        if (data.error) {
+          lastError = data.error.message;
+        }
+      } catch (err) {
+        lastError = err.message;
+      }
     }
 
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanJson);
-    } catch (e) {
-      parsed = { reply: rawText, kpiCards: [], chart: { type: "none" } };
-    }
-
-    return res.status(200).json({ success: true, data: parsed });
+    return res.status(500).json({ success: false, error: lastError || "All models busy" });
 
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
