@@ -1,4 +1,4 @@
-// Vercel Serverless Function: Secure Gemini AI Financial Analyst with Resilient Multi-Model Failover
+// Vercel Serverless Function: Secure Gemini AI Financial Copilot with Multi-Model Failover & Conversational Intelligence
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,46 +11,62 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ success: false, error: "GEMINI_API_KEY missing in Vercel" });
 
   if (req.method === "GET") {
-    return res.status(200).json({ success: true, message: "AI Analyst Engine Online" });
+    return res.status(200).json({ success: true, message: "Era AI Copilot Online" });
   }
 
   if (req.method !== "POST") return res.status(405).json({ success: false, error: "Method not allowed" });
 
   try {
-    const { question, financialContext } = req.body || {};
+    const { question, financialContext, chatHistory } = req.body || {};
     if (!question || !question.trim()) return res.status(400).json({ success: false, error: "Question cannot be empty" });
 
-    const systemPrompt = `You are the Gretex BillDesk Senior Financial AI Analyst.
-Company: Gretex Group (Treasury & Corporate Accounts).
-Tone: Highly professional, executive, financial controller.
-Provide clear numbers in INR, statutory MSME 45-day warnings, and working capital advice.
+    // Format chat conversation memory if available
+    let historyContext = "";
+    if (Array.isArray(chatHistory) && chatHistory.length > 0) {
+      historyContext = "\n\nRECENT CHAT HISTORY:\n" + chatHistory.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Era AI'}: ${m.text}`).join("\n");
+    }
+
+    const systemPrompt = `You are Era AI, a smart, conversational financial copilot and analyst for Gretex BillDesk (Gretex Group).
+
+CORE RULES FOR NATURAL, DYNAMIC CONVERSATION:
+1. ANSWER DIRECTLY & ACCURATELY:
+   - Always answer the user's specific question directly, point-to-point, and accurately.
+   - For greetings (e.g. "Hi", "Hello", "Kaise ho"), reply warmly and ask how you can help with bills, approvals, bank liquidity, or financial reports today. NEVER dump a repetitive financial report on a simple greeting!
+   - For specific questions (e.g. "Kya koi payment due hai?", "HDFC balance kitna hai?", "Kaunsa bill pending hai?"), answer ONLY that question with exact names, dates, and amounts from the context.
+   - Only provide a multi-point executive overview if the user explicitly asks for "summary", "overview", "report", or clicks quick report presets.
+
+2. LANGUAGE ADAPTATION:
+   - Match the user's language naturally!
+   - If the user writes in Hindi or Hinglish (e.g. "Kya koi payment due hai abhi?", "HDFC balance batao"), reply in friendly, fluent, professional Hinglish.
+   - If the user writes in English, reply in clean, professional English.
+
+3. DYNAMIC METRICS & CHARTS (NEVER FORCE THEM):
+   - "kpiCards": Return 2-3 cards ONLY if metrics/numbers directly answer or enrich the user's question. For greetings or simple single-fact questions, return an empty array [].
+   - "chart": Return a chart ONLY if the user explicitly asks for charts, spend breakdowns, comparisons, or visual reports. If a chart is not requested or relevant, return null.
+
+4. REAL DATA USAGE:
+   - Strictly use the LIVE FINANCIAL CONTEXT below. Use exact figures (bills, vendors, companies, amounts in INR ₹, due dates, bank accounts).
 
 LIVE FINANCIAL CONTEXT:
 ${financialContext ? JSON.stringify(financialContext, null, 2) : "Standard treasury context"}
+${historyContext}
 
 USER QUESTION:
 ${question}
 
-OUTPUT FORMAT (STRICT JSON ONLY):
+OUTPUT FORMAT (STRICT VALID JSON ONLY, NO EXTRA CODEBLOCKS):
 {
-  "reply": "Your clear conversational explanation formatted with markdown bullet points.",
-  "kpiCards": [
-    { "title": "Metric Name", "value": "₹...", "sub": "Note", "status": "success" }
-  ],
-  "chart": {
-    "type": "bar",
-    "title": "Summary Chart",
-    "labels": ["Approved", "Liquidity", "Overdue"],
-    "values": [100, 200, 50]
-  }
+  "reply": "Your conversational answer in markdown (use bold, bullets, or paragraphs as appropriate).",
+  "kpiCards": [],
+  "chart": null
 }`;
 
-    // Priority order: lite models first (zero demand spike), then preview models
+    // Priority order: lite models first (fast & reliable), then standard flash
     const models = [
       "gemini-flash-lite-latest",
       "gemini-2.5-flash-lite",
-      "gemini-3.5-flash-lite",
-      "gemini-flash-latest"
+      "gemini-flash-latest",
+      "gemini-2.0-flash"
     ];
 
     let lastError = null;
@@ -63,7 +79,10 @@ OUTPUT FORMAT (STRICT JSON ONLY):
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }]
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: {
+              temperature: 0.7
+            }
           })
         });
 
@@ -76,7 +95,7 @@ OUTPUT FORMAT (STRICT JSON ONLY):
           try {
             parsed = JSON.parse(cleanJson);
           } catch (e) {
-            parsed = { reply: rawText, kpiCards: [], chart: { type: "none" } };
+            parsed = { reply: rawText, kpiCards: [], chart: null };
           }
           return res.status(200).json({ success: true, modelUsed: m, data: parsed });
         }
