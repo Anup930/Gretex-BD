@@ -14,6 +14,7 @@ const App = (function () {
     approval: ApprovalComponent,
     payment: PaymentComponent,
     reports: ReportsComponent,
+    era_ai: EraAiComponent,
     fund_report: FundReportComponent,
     admin: AdminComponent,
     audit: AuditComponent
