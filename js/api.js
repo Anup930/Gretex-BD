@@ -252,6 +252,80 @@ const BillDeskAPI = (function () {
       return { success: true, schedule: schedule };
     },
 
+    calculateScheduleDueDate: function (schedule, periodKey) {
+      let rule = schedule.DueRule || "GenerationPlusDays";
+      let now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth(); // 0-indexed (0=Jan)
+
+      if (periodKey) {
+        let parts = String(periodKey).split("-");
+        if (parts.length >= 2 && !isNaN(parseInt(parts[0], 10))) {
+          year = parseInt(parts[0], 10);
+          if (parts[1].toUpperCase().startsWith("Q")) {
+            let q = parseInt(parts[1].slice(1), 10) || 1;
+            month = (q - 1) * 3;
+          } else if (!isNaN(parseInt(parts[1], 10))) {
+            month = parseInt(parts[1], 10) - 1;
+          }
+        }
+      }
+
+      function pad(n) { return String(n).padStart(2, "0"); }
+      function formatDate(d) {
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+      function daysInMonth(y, m) {
+        return new Date(y, m + 1, 0).getDate();
+      }
+
+      if (rule === "SpecificDates") {
+        if (schedule.SpecificDueDate) return schedule.SpecificDueDate;
+        return formatDate(new Date(year, month, 10));
+      }
+
+      if (rule === "ImmediateSameDay") {
+        let maxD = daysInMonth(year, month);
+        let genDay = Math.min(parseInt(schedule.GenerationDay, 10) || 1, maxD);
+        return formatDate(new Date(year, month, genDay));
+      }
+
+      if (rule === "FixedCalendarDay") {
+        let targetYear = year;
+        let targetMonth = month;
+        if (schedule.DueMonthTiming === "NextMonth") {
+          targetMonth += 1;
+          if (targetMonth > 11) {
+            targetYear += 1;
+            targetMonth = 0;
+          }
+        }
+        let maxDays = daysInMonth(targetYear, targetMonth);
+        let dayVal = schedule.DueCalendarDay === "last" ? maxDays : Math.min(parseInt(schedule.DueCalendarDay, 10) || parseInt(schedule.DueDay, 10) || 10, maxDays);
+        return formatDate(new Date(targetYear, targetMonth, dayVal));
+      }
+
+      if (rule === "MonthEnd") {
+        let targetYear = year;
+        let targetMonth = month + 1;
+        if (targetMonth > 11) {
+          targetYear += 1;
+          targetMonth = 0;
+        }
+        let maxDays = daysInMonth(targetYear, targetMonth);
+        let dayVal = schedule.DueCalendarDay === "last" ? maxDays : Math.min(parseInt(schedule.DueCalendarDay, 10) || parseInt(schedule.DueDay, 10) || 10, maxDays);
+        return formatDate(new Date(targetYear, targetMonth, dayVal));
+      }
+
+      // Default: GenerationPlusDays
+      let maxGen = daysInMonth(year, month);
+      let genDay = Math.min(parseInt(schedule.GenerationDay || schedule.DueDay || 10, 10), maxGen);
+      let dueIn = parseInt(schedule.DueInDays, 10) || 10;
+      let d = new Date(year, month, genDay);
+      d.setDate(d.getDate() + dueIn);
+      return formatDate(d);
+    },
+
     // Cycle Generation
     generateCycle: async function (scheduleId, periodKey, actorEmail) {
       if (backendMode === "live") {
@@ -289,7 +363,7 @@ const BillDeskAPI = (function () {
         VendorName: vend ? vend.VendorName : "Unknown Vendor",
         CompanyName: comp ? comp.CompanyName : "Unknown Company",
         CategoryName: cat ? cat.CategoryName : "General",
-        DueDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+        DueDate: this.calculateScheduleDueDate(schedule, periodKey),
         ExpectedAmount: schedule.ExpectedAmount || 0,
         ActualAmount: 0,
         Currency: schedule.Currency || "INR",
