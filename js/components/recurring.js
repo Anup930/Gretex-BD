@@ -94,10 +94,7 @@ const RecurringComponent = (function () {
                     <td><span class="badge badge-draft">${cat ? DashboardComponent.escapeHtml(cat.CategoryName) : "-"}</span></td>
                     <td><span class="badge badge-draft">${s.Frequency}</span></td>
                     <td>
-                      <span style="font-weight:700;">Day ${s.GenerationDay || s.DueDay || 10}</span>
-                      <span style="color:var(--slate-400); margin:0 2px;">→</span>
-                      <span style="font-weight:700; color:#059669;">Day ${(s.GenerationDay || s.DueDay || 10) + (s.DueInDays || 0)}</span>
-                      ${s.DueInDays ? `<div style="font-size:0.7rem; color:var(--slate-500);">+${s.DueInDays} days</div>` : ""}
+                      ${formatScheduleTiming(s)}
                     </td>
                     <td><strong>₹${(parseFloat(s.ExpectedAmount) || 0).toLocaleString("en-IN")}</strong></td>
                     <td><span class="badge badge-draft">${DashboardComponent.formatPeriod(s.LastGeneratedPeriod) || "None"}</span></td>
@@ -138,6 +135,62 @@ const RecurringComponent = (function () {
     });
   }
 
+  function getOrdinal(n) {
+    let s = ["th", "st", "nd", "rd"], v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
+  }
+
+  function formatScheduleTiming(s) {
+    let rule = s.DueRule || "GenerationPlusDays";
+    if (rule === "FixedCalendarDay") {
+      let gen = s.GenerationDay || 1;
+      let due = s.DueCalendarDay === "last" ? "Last Day" : `Day ${s.DueCalendarDay || s.DueDay || 10}`;
+      let timing = s.DueMonthTiming === "NextMonth" ? "Next Mo" : "Same Mo";
+      return `
+        <div><span style="font-weight:700;">Day ${gen}</span> <span style="color:var(--slate-400);">→</span> <span style="font-weight:700; color:#059669;">${due}</span></div>
+        <div style="display:flex; gap:3px; align-items:center; margin-top:2px;">
+          <span class="badge" style="font-size:0.62rem; padding:1px 5px; background:rgba(167,139,250,0.15); color:#a78bfa; border:1px solid rgba(167,139,250,0.3);">${timing}</span>
+        </div>
+      `;
+    }
+    if (rule === "SpecificDates") {
+      let gen = s.SpecificGenDate || "Exact";
+      let due = s.SpecificDueDate || "Exact";
+      return `
+        <div style="font-size:0.75rem;"><span style="font-weight:700;">${gen}</span></div>
+        <div style="color:var(--slate-400); font-size:0.7rem; margin:1px 0;">due by</div>
+        <div style="font-size:0.75rem; font-weight:700; color:#059669;">${due}</div>
+        <div style="margin-top:2px;"><span class="badge" style="font-size:0.62rem; padding:1px 5px; background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);">Single Cycle</span></div>
+      `;
+    }
+    if (rule === "ImmediateSameDay") {
+      let gen = s.GenerationDay || 1;
+      return `
+        <div><span style="font-weight:700;">Day ${gen}</span> <span style="color:var(--slate-400);">→</span> <span style="font-weight:700; color:#10b981;">Day ${gen}</span></div>
+        <div style="margin-top:2px;"><span class="badge" style="font-size:0.62rem; padding:1px 5px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">Immediate (Net 0)</span></div>
+      `;
+    }
+    if (rule === "MonthEnd") {
+      let due = s.DueCalendarDay === "last" ? "Last Day" : `Day ${s.DueCalendarDay || s.DueDay || 10}`;
+      return `
+        <div><span style="font-weight:700;">Month-End</span> <span style="color:var(--slate-400);">→</span> <span style="font-weight:700; color:#059669;">${due}</span></div>
+        <div style="margin-top:2px;"><span class="badge" style="font-size:0.62rem; padding:1px 5px; background:rgba(236,72,153,0.15); color:#ec4899; border:1px solid rgba(236,72,153,0.3);">Next Mo</span></div>
+      `;
+    }
+    // Default GenerationPlusDays
+    let gen = s.GenerationDay || s.DueDay || 10;
+    let dueIn = s.DueInDays || 0;
+    let computed = gen + dueIn;
+    return `
+      <div>
+        <span style="font-weight:700;">Day ${gen}</span>
+        <span style="color:var(--slate-400); margin:0 2px;">→</span>
+        <span style="font-weight:700; color:#059669;">Day ${computed}</span>
+      </div>
+      ${dueIn ? `<div style="font-size:0.7rem; color:var(--slate-500);">+${dueIn} days</div>` : ""}
+    `;
+  }
+
   function openScheduleModal(scheduleId = null) {
     let schedule = scheduleId ? (cachedData.recurringSchedules || []).find(s => s.ScheduleID === scheduleId) : null;
     let companies = cachedData.companies || [];
@@ -155,6 +208,11 @@ const RecurringComponent = (function () {
     let initialDueIn = schedule ? (schedule.DueInDays || 10) : 10;
     let initialFreq = schedule ? schedule.Frequency : "Monthly";
     let defaultUniqueId = schedule ? (schedule.UniqueID || schedule.ScheduleID || "") : `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    let initialDueRule = schedule?.DueRule || "GenerationPlusDays";
+    let initialDueTiming = schedule?.DueMonthTiming || "ThisMonth";
+    let initialDueCalDay = schedule?.DueCalendarDay || 10;
+    let initialSpecGenDate = schedule?.SpecificGenDate || new Date().toISOString().slice(0, 10);
+    let initialSpecDueDate = schedule?.SpecificDueDate || new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
 
     let modalHtml = `
       <div class="modal-backdrop active" id="schedule-modal" style="padding: 1rem;">
@@ -307,27 +365,132 @@ const RecurringComponent = (function () {
                   <span class="sec-dot"></span> BILLING CYCLE & DUE SCHEDULE
                 </div>
 
-                <div class="sch-form-row cols-3">
+                <div class="sch-form-row cols-2" style="margin-bottom:0.85rem;">
                   <div class="form-group">
-                    <label class="form-label">Frequency *</label>
+                    <label class="form-label">Billing Frequency *</label>
                     <select id="sch-frequency" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
                       <option value="Monthly" ${!schedule || schedule.Frequency === "Monthly" ? "selected" : ""}>Monthly</option>
                       <option value="Weekly" ${schedule && schedule.Frequency === "Weekly" ? "selected" : ""}>Weekly</option>
                       <option value="Quarterly" ${schedule && schedule.Frequency === "Quarterly" ? "selected" : ""}>Quarterly</option>
                       <option value="Yearly" ${schedule && schedule.Frequency === "Yearly" ? "selected" : ""}>Yearly</option>
+                      <option value="One-Time" ${schedule && schedule.Frequency === "One-Time" ? "selected" : ""}>One-Time / Single Cycle</option>
                     </select>
                   </div>
                   <div class="form-group">
-                    <label class="form-label">Bill Generation Day *</label>
-                    <select id="sch-genday" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
-                      ${Array.from({length: 30}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.GenerationDay || schedule.DueDay || 10) : 10) == d ? "selected" : ""}>Day ${d}</option>`).join("")}
+                    <label class="form-label">Schedule Mode / Due Rule *</label>
+                    <select id="sch-due-rule" class="form-select" required onchange="RecurringComponent.onDueRuleChange()">
+                      <option value="GenerationPlusDays" ${initialDueRule === "GenerationPlusDays" ? "selected" : ""}>Mode 1: Day + Offset Days (e.g. Day 10 + 10d)</option>
+                      <option value="FixedCalendarDay" ${initialDueRule === "FixedCalendarDay" ? "selected" : ""}>Mode 2: Fixed Calendar Days (This/Next Month)</option>
+                      <option value="SpecificDates" ${initialDueRule === "SpecificDates" ? "selected" : ""}>Mode 3: Specific Single-Cycle Exact Dates</option>
+                      <option value="ImmediateSameDay" ${initialDueRule === "ImmediateSameDay" ? "selected" : ""}>Mode 4: Same-Day Immediate Due (Net 0)</option>
+                      <option value="MonthEnd" ${initialDueRule === "MonthEnd" ? "selected" : ""}>Mode 5: Month-End Generation (Due Next Month)</option>
                     </select>
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Due In (Days) *</label>
-                    <select id="sch-duein" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
-                      ${Array.from({length: 28}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.DueInDays || 10) : 10) == d ? "selected" : ""}>+ ${d} Days</option>`).join("")}
-                    </select>
+                </div>
+
+                <!-- Rule Mode 1: Day + Offset -->
+                <div id="sch-mode-genplus" class="sch-rule-container" style="${initialDueRule === 'GenerationPlusDays' ? '' : 'display:none;'}">
+                  <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span>⚡</span> Day + Offset Mode: Calculates payment due date by adding N days to the generation day.
+                  </div>
+                  <div class="sch-form-row cols-2">
+                    <div class="form-group">
+                      <label class="form-label">Bill Generation Day (1–31) *</label>
+                      <select id="sch-genday" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 31}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.GenerationDay || schedule.DueDay || 10) : 10) == d ? "selected" : ""}>Day ${d}</option>`).join("")}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Payment Due In (Days) *</label>
+                      <select id="sch-duein" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 60}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.DueInDays || 10) : 10) == d ? "selected" : ""}>+ ${d} Days</option>`).join("")}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rule Mode 2: Fixed Calendar Day -->
+                <div id="sch-mode-fixedcal" class="sch-rule-container" style="${initialDueRule === 'FixedCalendarDay' ? '' : 'display:none;'}">
+                  <div style="font-size:0.75rem; color:#a78bfa; font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span>📅</span> Fixed Calendar Day Mode: Set generation day and specify due date in This Month or Next Month.
+                  </div>
+                  <div class="sch-form-row cols-3">
+                    <div class="form-group">
+                      <label class="form-label">Bill Generation Day *</label>
+                      <select id="sch-fixed-genday" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 31}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.GenerationDay || 2) : 2) == d ? "selected" : ""}>${d}${getOrdinal(d)} of Month</option>`).join("")}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Due Month Timing *</label>
+                      <select id="sch-fixed-timing" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        <option value="ThisMonth" ${initialDueTiming === 'ThisMonth' ? 'selected' : ''}>This Month (Same Month)</option>
+                        <option value="NextMonth" ${initialDueTiming === 'NextMonth' ? 'selected' : ''}>Next Month</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Due Calendar Day *</label>
+                      <select id="sch-fixed-dueday" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 31}, (_, i) => i + 1).map(d => `<option value="${d}" ${(initialDueCalDay == d) ? "selected" : ""}>${d}${getOrdinal(d)} Day</option>`).join("")}
+                        <option value="last" ${initialDueCalDay === 'last' ? 'selected' : ''}>Last Day of Month</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rule Mode 3: Specific Single-Cycle Dates -->
+                <div id="sch-mode-specific" class="sch-rule-container" style="${initialDueRule === 'SpecificDates' ? '' : 'display:none;'}">
+                  <div style="font-size:0.75rem; color:#f59e0b; font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span>🎯</span> Single-Cycle Exact Dates: Applies exact calendar dates for this specific billing cycle only.
+                  </div>
+                  <div class="sch-form-row cols-2">
+                    <div class="form-group">
+                      <label class="form-label">Bill Generation Date *</label>
+                      <input type="date" id="sch-spec-gendate" class="form-control" value="${initialSpecGenDate}" onchange="RecurringComponent.updateDuePreview()">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Bill Due Date *</label>
+                      <input type="date" id="sch-spec-duedate" class="form-control" value="${initialSpecDueDate}" onchange="RecurringComponent.updateDuePreview()">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rule Mode 4: Immediate Same Day (Net 0) -->
+                <div id="sch-mode-immediate" class="sch-rule-container" style="${initialDueRule === 'ImmediateSameDay' ? '' : 'display:none;'}">
+                  <div style="font-size:0.75rem; color:#10b981; font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span>⚡</span> Immediate Due (Net 0): Auto-debit / instant payment obligations due on the generation day.
+                  </div>
+                  <div class="sch-form-row cols-2">
+                    <div class="form-group">
+                      <label class="form-label">Bill Generation Day *</label>
+                      <select id="sch-immed-genday" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 31}, (_, i) => i + 1).map(d => `<option value="${d}" ${(schedule ? (schedule.GenerationDay || 1) : 1) == d ? "selected" : ""}>Day ${d}</option>`).join("")}
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Payment Due Grace Period</label>
+                      <input type="text" class="form-control" value="Same Day (0 Days Grace / Instant)" disabled style="opacity:0.75;">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Rule Mode 5: Month-End Generation -->
+                <div id="sch-mode-monthend" class="sch-rule-container" style="${initialDueRule === 'MonthEnd' ? '' : 'display:none;'}">
+                  <div style="font-size:0.75rem; color:#ec4899; font-weight:600; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4rem;">
+                    <span>🏁</span> Month-End Billing: Generates on the final day of each calendar month, due in Next Month.
+                  </div>
+                  <div class="sch-form-row cols-2">
+                    <div class="form-group">
+                      <label class="form-label">Generation Timing</label>
+                      <input type="text" class="form-control" value="Last Day of Billing Month (28th–31st auto)" disabled style="opacity:0.75;">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Due In Next Month *</label>
+                      <select id="sch-monthend-dueday" class="form-select" onchange="RecurringComponent.updateDuePreview()">
+                        ${Array.from({length: 31}, (_, i) => i + 1).map(d => `<option value="${d}" ${(initialDueCalDay == d) ? "selected" : ""}>Day ${d} of Next Month</option>`).join("")}
+                        <option value="last" ${initialDueCalDay === 'last' ? 'selected' : ''}>Last Day of Next Month</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -380,9 +543,49 @@ const RecurringComponent = (function () {
     let workLocation = document.getElementById("sch-work-location")?.value || "";
     let expectedAmount = parseFloat(document.getElementById("sch-amount").value) || 0;
     let frequency = document.getElementById("sch-frequency").value;
-    let generationDay = parseInt(document.getElementById("sch-genday").value, 10) || 10;
-    let dueInDays = parseInt(document.getElementById("sch-duein").value, 10) || 10;
-    let dueDay = generationDay + dueInDays; // Computed due day (can exceed 30 = next month)
+    let dueRule = document.getElementById("sch-due-rule")?.value || "GenerationPlusDays";
+
+    let generationDay = 10;
+    let dueInDays = 10;
+    let dueDay = 20;
+    let dueCalendarDay = 10;
+    let dueMonthTiming = "ThisMonth";
+    let specificGenDate = "";
+    let specificDueDate = "";
+
+    if (dueRule === "FixedCalendarDay") {
+      generationDay = parseInt(document.getElementById("sch-fixed-genday")?.value, 10) || 2;
+      dueMonthTiming = document.getElementById("sch-fixed-timing")?.value || "ThisMonth";
+      let calVal = document.getElementById("sch-fixed-dueday")?.value || "10";
+      dueCalendarDay = calVal === "last" ? "last" : parseInt(calVal, 10);
+      dueDay = dueCalendarDay === "last" ? 31 : dueCalendarDay;
+      dueInDays = dueMonthTiming === "NextMonth" ? 30 : Math.max(0, (typeof dueCalendarDay === "number" ? dueCalendarDay - generationDay : 10));
+    } else if (dueRule === "SpecificDates") {
+      specificGenDate = document.getElementById("sch-spec-gendate")?.value || "";
+      specificDueDate = document.getElementById("sch-spec-duedate")?.value || "";
+      generationDay = specificGenDate ? new Date(specificGenDate).getDate() : 1;
+      dueDay = specificDueDate ? new Date(specificDueDate).getDate() : 10;
+      if (specificGenDate && specificDueDate) {
+        dueInDays = Math.max(0, Math.round((new Date(specificDueDate) - new Date(specificGenDate)) / 86400000));
+      }
+    } else if (dueRule === "ImmediateSameDay") {
+      generationDay = parseInt(document.getElementById("sch-immed-genday")?.value, 10) || 1;
+      dueInDays = 0;
+      dueDay = generationDay;
+    } else if (dueRule === "MonthEnd") {
+      generationDay = 31;
+      let calVal = document.getElementById("sch-monthend-dueday")?.value || "10";
+      dueCalendarDay = calVal === "last" ? "last" : parseInt(calVal, 10);
+      dueDay = dueCalendarDay === "last" ? 31 : dueCalendarDay;
+      dueMonthTiming = "NextMonth";
+      dueInDays = 10;
+    } else {
+      // GenerationPlusDays
+      generationDay = parseInt(document.getElementById("sch-genday")?.value, 10) || 10;
+      dueInDays = parseInt(document.getElementById("sch-duein")?.value, 10) || 10;
+      dueDay = generationDay + dueInDays;
+    }
+
     let notes = document.getElementById("sch-notes").value.trim();
 
     let comp = (cachedData.companies || []).find(c => c.CompanyID === companyId);
@@ -405,10 +608,14 @@ const RecurringComponent = (function () {
       WorkLocation: workLocation,
       ExpectedAmount: expectedAmount,
       Frequency: frequency,
-      DueRule: "GenerationPlusDays",
+      DueRule: dueRule,
       GenerationDay: generationDay,
       DueInDays: dueInDays,
       DueDay: dueDay,
+      DueCalendarDay: dueCalendarDay,
+      DueMonthTiming: dueMonthTiming,
+      SpecificGenDate: specificGenDate,
+      SpecificDueDate: specificDueDate,
       Currency: "INR",
       InvoiceDeadlineDays: 5,
       OwnerUserID: BillDeskAuth.getCurrentUser()?.userId || "",
@@ -853,49 +1060,119 @@ const RecurringComponent = (function () {
     }
   }
 
+  function onDueRuleChange() {
+    let rule = document.getElementById("sch-due-rule")?.value || "GenerationPlusDays";
+    let modes = ["genplus", "fixedcal", "specific", "immediate", "monthend"];
+    let target = "";
+    if (rule === "GenerationPlusDays") target = "genplus";
+    else if (rule === "FixedCalendarDay") target = "fixedcal";
+    else if (rule === "SpecificDates") target = "specific";
+    else if (rule === "ImmediateSameDay") target = "immediate";
+    else if (rule === "MonthEnd") target = "monthend";
+
+    modes.forEach(m => {
+      let el = document.getElementById("sch-mode-" + m);
+      if (el) el.style.display = (m === target) ? "" : "none";
+    });
+
+    let freqSelect = document.getElementById("sch-frequency");
+    if (freqSelect && rule === "SpecificDates" && freqSelect.value !== "One-Time") {
+      freqSelect.value = "One-Time";
+    }
+
+    updateDuePreview();
+  }
+
   function updateDuePreview() {
-    let genDay = parseInt(document.getElementById("sch-genday")?.value, 10) || 10;
-    let dueIn = parseInt(document.getElementById("sch-duein")?.value, 10) || 10;
+    let rule = document.getElementById("sch-due-rule")?.value || "GenerationPlusDays";
     let amount = parseFloat(document.getElementById("sch-amount")?.value) || 0;
     let freq = document.getElementById("sch-frequency")?.value || "Monthly";
     let compSelect = document.getElementById("sch-company");
     let compName = compSelect && compSelect.selectedIndex > 0 ? compSelect.options[compSelect.selectedIndex].text : "Select company";
 
-    let computedDue = genDay + dueIn;
-    let previewEl = document.getElementById("sch-due-preview-text");
-    if (previewEl) {
+    let previewBannerText = "";
+    let sidebarDueText = "";
+    let sidebarGenText = "";
+    let sidebarFreqSubText = "";
+
+    if (rule === "FixedCalendarDay") {
+      let genDay = parseInt(document.getElementById("sch-fixed-genday")?.value, 10) || 2;
+      let timing = document.getElementById("sch-fixed-timing")?.value || "ThisMonth";
+      let dueDayVal = document.getElementById("sch-fixed-dueday")?.value || "10";
+      let dueDayLabel = dueDayVal === "last" ? "Last Day" : `Day ${dueDayVal}`;
+      let timingLabel = timing === "NextMonth" ? "Next Month" : "This Month (Same)";
+
+      previewBannerText = `Bill generates on Day ${genDay} → Due on ${dueDayLabel} of ${timingLabel}`;
+      sidebarGenText = `Day ${genDay}`;
+      sidebarDueText = `${dueDayLabel} (${timing === "NextMonth" ? "Next Mo" : "Same Mo"})`;
+      sidebarFreqSubText = `per ${freq.toLowerCase()} • Gen Day ${genDay} → Due ${dueDayLabel} (${timing === "NextMonth" ? "Next Mo" : "Same"})`;
+
+    } else if (rule === "SpecificDates") {
+      let genDate = document.getElementById("sch-spec-gendate")?.value || "YYYY-MM-DD";
+      let dueDate = document.getElementById("sch-spec-duedate")?.value || "YYYY-MM-DD";
+
+      previewBannerText = `Single Cycle: Bill generates on ${genDate} → Payment Due on ${dueDate}`;
+      sidebarGenText = genDate;
+      sidebarDueText = dueDate;
+      sidebarFreqSubText = `Single Cycle • ${genDate} → ${dueDate}`;
+
+    } else if (rule === "ImmediateSameDay") {
+      let genDay = parseInt(document.getElementById("sch-immed-genday")?.value, 10) || 1;
+
+      previewBannerText = `Auto-Pay / Net 0: Bill generates on Day ${genDay} → Due immediately on SAME DAY`;
+      sidebarGenText = `Day ${genDay}`;
+      sidebarDueText = `Same Day (Net 0)`;
+      sidebarFreqSubText = `per ${freq.toLowerCase()} • Day ${genDay} → Same Day (Instant)`;
+
+    } else if (rule === "MonthEnd") {
+      let dueDayVal = document.getElementById("sch-monthend-dueday")?.value || "10";
+      let dueDayLabel = dueDayVal === "last" ? "Last Day" : `Day ${dueDayVal}`;
+
+      previewBannerText = `Month-End: Bill generates on Month-End (28th–31st) → Due on ${dueDayLabel} of Next Month`;
+      sidebarGenText = `Month-End`;
+      sidebarDueText = `${dueDayLabel} (Next Mo)`;
+      sidebarFreqSubText = `per ${freq.toLowerCase()} • Month-End → ${dueDayLabel} Next Mo`;
+
+    } else {
+      // GenerationPlusDays
+      let genDay = parseInt(document.getElementById("sch-genday")?.value, 10) || 10;
+      let dueIn = parseInt(document.getElementById("sch-duein")?.value, 10) || 10;
+      let computedDue = genDay + dueIn;
+
       if (computedDue > 30) {
         let spillDays = computedDue - 30;
-        previewEl.textContent = `Bill generates on Day ${genDay} → Due on Day ${spillDays} of next month (+${dueIn} days)`;
+        previewBannerText = `Bill generates on Day ${genDay} → Due on Day ${spillDays} of Next Month (+${dueIn} days)`;
+        sidebarDueText = `Day ${spillDays} (+${dueIn}d next mo)`;
       } else {
-        previewEl.textContent = `Bill generates on Day ${genDay} → Due on Day ${computedDue} of the same month (+${dueIn} days)`;
+        previewBannerText = `Bill generates on Day ${genDay} → Due on Day ${computedDue} of the same month (+${dueIn} days)`;
+        sidebarDueText = `Day ${computedDue} (+${dueIn}d)`;
       }
+      sidebarGenText = `Day ${genDay}`;
+      sidebarFreqSubText = `per ${freq.toLowerCase()} • Day ${genDay} → ${sidebarDueText}`;
     }
+
+    let previewEl = document.getElementById("sch-due-preview-text");
+    if (previewEl) previewEl.textContent = previewBannerText;
 
     // Sidebar Live Preview updates
     let prevAmountEl = document.getElementById("sch-prev-amount");
     if (prevAmountEl) prevAmountEl.textContent = "₹" + amount.toLocaleString("en-IN");
 
     let prevFreqSubEl = document.getElementById("sch-prev-freq-sub");
-    if (prevFreqSubEl) {
-      let dueDisplay = computedDue > 30 ? `Day ${computedDue - 30} (Next Mo)` : `Day ${computedDue}`;
-      prevFreqSubEl.textContent = `per ${freq.toLowerCase()} • Day ${genDay} → ${dueDisplay}`;
-    }
+    if (prevFreqSubEl) prevFreqSubEl.textContent = sidebarFreqSubText;
 
     let prevGenEl = document.getElementById("sch-prev-gen");
-    if (prevGenEl) prevGenEl.textContent = `Day ${genDay}`;
+    if (prevGenEl) prevGenEl.textContent = sidebarGenText;
 
     let prevDueEl = document.getElementById("sch-prev-due");
-    if (prevDueEl) {
-      prevDueEl.textContent = computedDue > 30 ? `Day ${computedDue - 30} (+${dueIn}d next mo)` : `Day ${computedDue} (+${dueIn}d)`;
-    }
+    if (prevDueEl) prevDueEl.textContent = sidebarDueText;
 
     let prevYearlyEl = document.getElementById("sch-prev-yearly");
     if (prevYearlyEl) {
       let multiplier = 12;
       if (freq === "Weekly") multiplier = 52;
       else if (freq === "Quarterly") multiplier = 4;
-      else if (freq === "Yearly") multiplier = 1;
+      else if (freq === "Yearly" || freq === "One-Time") multiplier = 1;
       prevYearlyEl.textContent = "₹" + (amount * multiplier).toLocaleString("en-IN");
     }
 
@@ -974,6 +1251,8 @@ const RecurringComponent = (function () {
     handleImportFileSelect: handleImportFileSelect,
     handleImportTextPaste: handleImportTextPaste,
     submitImport: submitImport,
-    updateDuePreview: updateDuePreview
+    onDueRuleChange: onDueRuleChange,
+    updateDuePreview: updateDuePreview,
+    formatScheduleTiming: formatScheduleTiming
   };
 })();
