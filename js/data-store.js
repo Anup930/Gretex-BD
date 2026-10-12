@@ -51,6 +51,7 @@ const BillDeskDataStore = (() => {
       approvalTasks: [],
       paymentAttempts: [],
       config: [],
+      locations: [],
       auditLog: []
     };
   }

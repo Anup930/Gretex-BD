@@ -25,7 +25,8 @@ const BillDeskAPI = (function () {
     approvalRoutes: [],
     approvalTasks: [],
     paymentAttempts: [],
-    config: []
+    config: [],
+    locations: []
   };
 
 
@@ -180,11 +181,12 @@ const BillDeskAPI = (function () {
     },
 
     getInitialData: async function () {
+      let data = null;
       if (backendMode === "live") {
         try {
           let res = await callAppsScript("getInitialData");
           if (res && res.success && res.data) {
-            return res.data;
+            data = res.data;
           }
           if (res && res.error) {
             console.error("Backend error from Google Sheet:", res.error);
@@ -194,9 +196,15 @@ const BillDeskAPI = (function () {
           console.warn("Fetching live data from Google Sheet failed:", e.message);
           App.showToast("Cannot connect to Google Sheet backend: " + e.message, "error");
         }
-        return JSON.parse(JSON.stringify(EMPTY_SHEET_DB));
+        if (!data) data = JSON.parse(JSON.stringify(EMPTY_SHEET_DB));
+      } else {
+        data = getLocalDB();
       }
-      return getLocalDB();
+
+      if (!data.locations || data.locations.length === 0) {
+        data.locations = this.getLocations();
+      }
+      return data;
     },
 
     seedSheetData: async function (actorEmail) {
@@ -273,6 +281,11 @@ const BillDeskAPI = (function () {
         ScheduleID: schedule.ScheduleID,
         PeriodKey: periodKey,
         BillName: schedule.BillName,
+        UniqueID: schedule.UniqueID || "",
+        AccountingEntity: schedule.AccountingEntity || "",
+        AccountingLedger: schedule.AccountingLedger || "",
+        CityName: schedule.CityName || "",
+        WorkLocation: schedule.WorkLocation || "",
         VendorName: vend ? vend.VendorName : "Unknown Vendor",
         CompanyName: comp ? comp.CompanyName : "Unknown Company",
         CategoryName: cat ? cat.CategoryName : "General",
@@ -327,7 +340,9 @@ const BillDeskAPI = (function () {
       cycle.TaxableValue = parseFloat(data.taxableValue) || 0;
       cycle.GSTAmount = parseFloat(data.gstAmount) || 0;
       cycle.TDSAmount = parseFloat(data.tdsAmount) || 0;
-      cycle.NetPayable = actualAmount - cycle.TDSAmount;
+      cycle.NetPayable = data.netPayable !== undefined && data.netPayable !== null && !isNaN(parseFloat(data.netPayable))
+        ? parseFloat(data.netPayable)
+        : (actualAmount - cycle.TDSAmount);
       cycle.InvoiceFileID = invoiceFileId;
       cycle.Status = hasBoth ? "ReadyForSubmission" : "Incomplete";
       cycle.ReviewStatus = "Completed";
@@ -611,6 +626,92 @@ const BillDeskAPI = (function () {
         count++;
       }
       return { success: true, count: count };
+    },
+
+    // Work Locations & Cities Master
+    getLocations: function () {
+      try {
+        let raw = localStorage.getItem("billdesk_locations_master_v1");
+        if (raw) {
+          let parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+
+      // Default locations for Gretex Group
+      const defaultLocations = [
+        { LocationID: "loc-mum-01", LocationCode: "LOC-MUM-BKC", LocationName: "Corporate Office - BKC Mumbai", CityName: "Mumbai", OfficeType: "Corporate Office", Address: "Bandra Kurla Complex, Bandra East, Mumbai - 400051", IsActive: true },
+        { LocationID: "loc-mum-02", LocationCode: "LOC-MUM-HO", LocationName: "Head Office (HO) - Lower Parel", CityName: "Mumbai", OfficeType: "Head Office (HO)", Address: "Naman Midtown, Senapati Bapat Marg, Mumbai - 400013", IsActive: true },
+        { LocationID: "loc-ccu-01", LocationCode: "LOC-CCU-DAL", LocationName: "Branch Office - Dalhousie Kolkata", CityName: "Kolkata", OfficeType: "Branch Office", Address: "Hemanta Basu Sarani, Dalhousie, Kolkata - 700001", IsActive: true },
+        { LocationID: "loc-del-01", LocationCode: "LOC-DEL-CP", LocationName: "Branch Office - Connaught Place", CityName: "New Delhi", OfficeType: "Branch Office", Address: "Barakhamba Road, Connaught Place, New Delhi - 110001", IsActive: true },
+        { LocationID: "loc-blr-01", LocationCode: "LOC-BLR-IND", LocationName: "Branch Office - Bengaluru", CityName: "Bengaluru", OfficeType: "Branch Office", Address: "100 Feet Road, Indiranagar, Bengaluru - 560038", IsActive: true },
+        { LocationID: "loc-pun-01", LocationCode: "LOC-PUN-VIM", LocationName: "Branch Office - Pune", CityName: "Pune", OfficeType: "Branch Office", Address: "Viman Nagar, Pune - 411014", IsActive: true },
+        { LocationID: "loc-hyd-01", LocationCode: "LOC-HYD-HIT", LocationName: "Regional Hub - South", CityName: "Hyderabad", OfficeType: "Regional Hub", Address: "HITEC City, Madhapur, Hyderabad - 500081", IsActive: true },
+        { LocationID: "loc-reg-01", LocationCode: "LOC-REG-OFF", LocationName: "Registered Office", CityName: "Mumbai", OfficeType: "Registered Office", Address: "Nariman Point, Mumbai - 400021", IsActive: true },
+        { LocationID: "loc-rem-01", LocationCode: "LOC-REM-WFH", LocationName: "Remote / Work From Home (WFH)", CityName: "All India", OfficeType: "Remote / WFH", Address: "Distributed Workforce", IsActive: true }
+      ];
+      localStorage.setItem("billdesk_locations_master_v1", JSON.stringify(defaultLocations));
+      return defaultLocations;
+    },
+
+    saveLocation: async function (locData, actorEmail) {
+      let list = this.getLocations();
+      if (locData.LocationID) {
+        let idx = list.findIndex(l => l.LocationID === locData.LocationID);
+        if (idx !== -1) {
+          locData.UpdatedAt = new Date().toISOString();
+          list[idx] = { ...list[idx], ...locData };
+        } else {
+          list.push(locData);
+        }
+      } else {
+        locData.LocationID = "loc-" + Date.now();
+        locData.CreatedAt = new Date().toISOString();
+        locData.UpdatedAt = new Date().toISOString();
+        if (locData.IsActive === undefined) locData.IsActive = true;
+        list.push(locData);
+      }
+      localStorage.setItem("billdesk_locations_master_v1", JSON.stringify(list));
+
+      if (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.getData) {
+        let current = BillDeskDataStore.getData();
+        if (current) current.locations = list;
+      }
+
+      recordLocalAudit(actorEmail, "SAVE_LOCATION", "WorkLocation", locData.LocationID, null, locData, "Saved work location / city");
+
+      if (backendMode === "live") {
+        try {
+          await callAppsScript("saveMaster", { type: "Locations", data: locData, actorEmail: actorEmail });
+        } catch (e) {
+          console.warn("Live saveMaster for Locations fallback to local:", e.message);
+        }
+      }
+
+      return { success: true, location: locData };
+    },
+
+    deleteLocation: async function (locId, actorEmail) {
+      let list = this.getLocations();
+      let idx = list.findIndex(l => l.LocationID === locId);
+      if (idx !== -1) {
+        let removed = list.splice(idx, 1)[0];
+        localStorage.setItem("billdesk_locations_master_v1", JSON.stringify(list));
+
+        if (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.getData) {
+          let current = BillDeskDataStore.getData();
+          if (current) current.locations = list;
+        }
+
+        recordLocalAudit(actorEmail, "DELETE_LOCATION", "WorkLocation", locId, removed, null, "Deleted location");
+
+        if (backendMode === "live") {
+          try {
+            await callAppsScript("deleteMaster", { type: "Locations", id: locId, actorEmail: actorEmail });
+          } catch (e) {}
+        }
+      }
+      return { success: true };
     },
 
     // User Management
