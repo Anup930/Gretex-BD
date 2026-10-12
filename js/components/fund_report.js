@@ -78,41 +78,41 @@ const FundReportComponent = (function () {
         <div class="table-toolbar">
           <div style="font-weight:700; color:var(--navy-900);">Due Date Aging Buckets</div>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:1px; background:var(--slate-200);">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.6rem; padding:0.85rem; background:transparent;">
           
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:#dc2626; font-weight:700;">OVERDUE</div>
-            <div style="font-size:1.15rem; font-weight:700; color:#dc2626; margin-top:0.25rem;">₹${(buckets.overdue || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.25); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#f87171; font-weight:700;">OVERDUE</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#f87171; margin-top:0.25rem;">₹${(buckets.overdue || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:#d97706; font-weight:700;">DUE TODAY</div>
-            <div style="font-size:1.15rem; font-weight:700; color:#d97706; margin-top:0.25rem;">₹${(buckets.today || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.25); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#fbbf24; font-weight:700;">DUE TODAY</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#fbbf24; margin-top:0.25rem;">₹${(buckets.today || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:var(--slate-600); font-weight:700;">1 - 2 DAYS</div>
-            <div style="font-size:1.15rem; font-weight:700; color:var(--slate-800); margin-top:0.25rem;">₹${(buckets.oneToTwoDays || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.08); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">1 - 2 DAYS</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#ffffff; margin-top:0.25rem;">₹${(buckets.oneToTwoDays || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:var(--slate-600); font-weight:700;">DAY 3</div>
-            <div style="font-size:1.15rem; font-weight:700; color:var(--slate-800); margin-top:0.25rem;">₹${(buckets.threeDays || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.08); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">DAY 3</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#ffffff; margin-top:0.25rem;">₹${(buckets.threeDays || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:var(--slate-600); font-weight:700;">4 - 7 DAYS</div>
-            <div style="font-size:1.15rem; font-weight:700; color:var(--slate-800); margin-top:0.25rem;">₹${(buckets.fourToSevenDays || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.08); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">4 - 7 DAYS</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#ffffff; margin-top:0.25rem;">₹${(buckets.fourToSevenDays || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:var(--slate-600); font-weight:700;">8 - 14 DAYS</div>
-            <div style="font-size:1.15rem; font-weight:700; color:var(--slate-800); margin-top:0.25rem;">₹${(buckets.eightToFourteenDays || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.08); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">8 - 14 DAYS</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#ffffff; margin-top:0.25rem;">₹${(buckets.eightToFourteenDays || 0).toLocaleString("en-IN")}</div>
           </div>
 
-          <div style="background:var(--white); padding:1rem; text-align:center;">
-            <div style="font-size:0.75rem; color:var(--slate-600); font-weight:700;">LATER / UNDATED</div>
-            <div style="font-size:1.15rem; font-weight:700; color:var(--slate-800); margin-top:0.25rem;">₹${(buckets.later || 0).toLocaleString("en-IN")}</div>
+          <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.08); border-radius:var(--radius-md); padding:1rem; text-align:center;">
+            <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">LATER / UNDATED</div>
+            <div style="font-size:1.15rem; font-weight:700; color:#ffffff; margin-top:0.25rem;">₹${(buckets.later || 0).toLocaleString("en-IN")}</div>
           </div>
 
         </div>

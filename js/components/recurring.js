@@ -65,13 +65,32 @@ const RecurringComponent = (function () {
               ${schedules.map(s => {
                 let comp = (cachedData.companies || []).find(c => c.CompanyID === s.CompanyID);
                 let cat = (cachedData.categories || []).find(c => c.CategoryID === s.CategoryID);
+                let searchTokens = [
+                  s.BillName,
+                  s.UniqueID,
+                  s.AccountingEntity,
+                  s.AccountingLedger,
+                  s.CityName,
+                  s.WorkLocation,
+                  comp?.CompanyName,
+                  cat?.CategoryName
+                ].filter(Boolean).join(" ").toLowerCase();
+
+                let locDisplay = [s.CityName, s.WorkLocation].filter(Boolean).join(" • ");
+
                 return `
-                  <tr data-id="${s.ScheduleID}" data-search="${(s.BillName + ' ' + (comp?.CompanyName || '') + ' ' + (cat?.CategoryName || '')).toLowerCase()}" data-freq="${s.Frequency}">
+                  <tr data-id="${s.ScheduleID}" data-search="${DashboardComponent.escapeHtml(searchTokens)}" data-freq="${s.Frequency}">
                     <td>
                       <strong>${DashboardComponent.escapeHtml(s.BillName)}</strong>
-                      <div style="font-size:0.75rem; color:var(--slate-500);">${DashboardComponent.escapeHtml(s.PayingEntity || "")}</div>
+                      <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap; margin-top:3px;">
+                        ${s.UniqueID ? `<span style="font-size:0.68rem; font-family:monospace; background:rgba(56,189,248,0.12); color:#38bdf8; padding:1px 5px; border-radius:4px; border:1px solid rgba(56,189,248,0.25);">${DashboardComponent.escapeHtml(s.UniqueID)}</span>` : ""}
+                        ${locDisplay ? `<span style="font-size:0.72rem; color:var(--slate-400);">📍 ${DashboardComponent.escapeHtml(locDisplay)}</span>` : ""}
+                      </div>
                     </td>
-                    <td>${comp ? DashboardComponent.escapeHtml(comp.CompanyName) : "-"}</td>
+                    <td>
+                      <div>${comp ? DashboardComponent.escapeHtml(comp.CompanyName) : "-"}</div>
+                      ${s.AccountingLedger ? `<div style="font-size:0.72rem; color:var(--slate-400); margin-top:2px;" title="Ledger">📖 ${DashboardComponent.escapeHtml(s.AccountingLedger)}</div>` : ""}
+                    </td>
                     <td><span class="badge badge-draft">${cat ? DashboardComponent.escapeHtml(cat.CategoryName) : "-"}</span></td>
                     <td><span class="badge badge-draft">${s.Frequency}</span></td>
                     <td>
@@ -124,11 +143,18 @@ const RecurringComponent = (function () {
     let companies = cachedData.companies || [];
     let vendors = cachedData.vendors || [];
     let categories = cachedData.categories || [];
+    let locations = (typeof BillDeskAPI !== "undefined" && BillDeskAPI.getLocations) ? BillDeskAPI.getLocations() : (cachedData.locations || []);
+    let activeLocations = locations.filter(l => l.IsActive !== false);
+    let masterCities = [...new Set(activeLocations.filter(l => l.CityName).map(l => l.CityName.trim()))].sort();
+    if (masterCities.length === 0) {
+      masterCities = ["Mumbai", "Kolkata", "New Delhi", "Bengaluru", "Pune", "Hyderabad", "Chennai", "Ahmedabad", "Jaipur"];
+    }
 
     let initialAmount = schedule ? (parseFloat(schedule.ExpectedAmount) || 0) : 25000;
     let initialGenDay = schedule ? (schedule.GenerationDay || schedule.DueDay || 10) : 10;
     let initialDueIn = schedule ? (schedule.DueInDays || 10) : 10;
     let initialFreq = schedule ? schedule.Frequency : "Monthly";
+    let defaultUniqueId = schedule ? (schedule.UniqueID || schedule.ScheduleID || "") : `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     let modalHtml = `
       <div class="modal-backdrop active" id="schedule-modal" style="padding: 1rem;">
@@ -165,6 +191,14 @@ const RecurringComponent = (function () {
                     <span class="label">Paying Entity</span>
                     <span class="value" id="sch-prev-entity">${schedule ? DashboardComponent.escapeHtml(schedule.CompanyName || "Not selected") : "Select company"}</span>
                   </div>
+                  <div class="sch-preview-row">
+                    <span class="label">City & Location</span>
+                    <span class="value" id="sch-prev-loc">${schedule ? DashboardComponent.escapeHtml([schedule.CityName, schedule.WorkLocation].filter(Boolean).join(" • ") || "Not set") : "Not set"}</span>
+                  </div>
+                  <div class="sch-preview-row">
+                    <span class="label">Accounting Ledger</span>
+                    <span class="value" id="sch-prev-ledger">${schedule && schedule.AccountingLedger ? DashboardComponent.escapeHtml(schedule.AccountingLedger) : "Not set"}</span>
+                  </div>
                 </div>
               </div>
 
@@ -179,14 +213,23 @@ const RecurringComponent = (function () {
 
               <form id="schedule-form" onsubmit="RecurringComponent.saveSchedule(event, '${scheduleId || ""}')">
                 
-                <!-- SECTION 1: BASIC DETAILS -->
+                <!-- SECTION 1: BASIC DETAILS & IDENTIFIERS -->
                 <div class="sch-section-label sec-blue">
-                  <span class="sec-dot"></span> BASIC DETAILS & ENTITY MAPPING
+                  <span class="sec-dot"></span> BASIC DETAILS & IDENTIFIERS
                 </div>
 
-                <div class="form-group" style="margin-bottom:0.75rem;">
-                  <label class="form-label">Bill / Obligation Name *</label>
-                  <input type="text" id="sch-billname" class="form-control" required value="${schedule ? DashboardComponent.escapeHtml(schedule.BillName) : ""}" placeholder="e.g. Airtel Broadband Bandra" oninput="RecurringComponent.updateDuePreview()">
+                <div class="sch-form-row cols-2">
+                  <div class="form-group">
+                    <label class="form-label">Bill / Obligation Name *</label>
+                    <input type="text" id="sch-billname" class="form-control" required value="${schedule ? DashboardComponent.escapeHtml(schedule.BillName) : ""}" placeholder="e.g. Airtel Broadband Bandra" oninput="RecurringComponent.updateDuePreview()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Unique ID (Schedule Code) *</label>
+                    <div style="display:flex; gap:0.4rem;">
+                      <input type="text" id="sch-unique-id" class="form-control" required value="${DashboardComponent.escapeHtml(defaultUniqueId)}" placeholder="e.g. REC-2026-MUM-001" oninput="RecurringComponent.updateDuePreview()">
+                      <button type="button" class="btn btn-sm btn-secondary" onclick="RecurringComponent.generateUniqueId()" title="Generate Unique ID" style="white-space:nowrap; padding:0 0.65rem; font-size:0.75rem;">⚡ Auto</button>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="sch-form-row cols-2">
@@ -220,7 +263,46 @@ const RecurringComponent = (function () {
                   </div>
                 </div>
 
-                <!-- SECTION 2: BILLING CYCLE & DUE RULES -->
+                <!-- SECTION 2: ACCOUNTING & LOCATION MAPPING -->
+                <div class="sch-section-label sec-purple">
+                  <span class="sec-dot"></span> ACCOUNTING & WORK LOCATION MAPPING
+                </div>
+
+                <div class="sch-form-row cols-2">
+                  <div class="form-group">
+                    <label class="form-label">Accounting Entity</label>
+                    <input type="text" id="sch-accounting-entity" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.AccountingEntity || "") : ""}" placeholder="e.g. Gretex Corporate Services Ltd / Unit 01" oninput="RecurringComponent.updateDuePreview()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Accounting Ledger</label>
+                    <input type="text" id="sch-accounting-ledger" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.AccountingLedger || "") : ""}" placeholder="e.g. Electricity OPEX A/c #5010" oninput="RecurringComponent.updateDuePreview()">
+                  </div>
+                </div>
+
+                <div class="sch-form-row cols-2">
+                  <div class="form-group">
+                    <label class="form-label">City Name</label>
+                    <input type="text" id="sch-city-name" list="city-suggestions" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.CityName || schedule.City || "") : ""}" placeholder="e.g. Mumbai, Kolkata, Delhi" oninput="RecurringComponent.onCityInputChange()">
+                    <datalist id="city-suggestions">
+                      ${masterCities.map(c => `<option value="${DashboardComponent.escapeHtml(c)}">`).join("")}
+                    </datalist>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Work Location</label>
+                    <select id="sch-work-location" class="form-select" onchange="RecurringComponent.handleLocationChange()">
+                      <option value="">Select Work Location</option>
+                      ${activeLocations.map(loc => {
+                        let optVal = loc.LocationName;
+                        let label = loc.LocationName + (loc.CityName ? ` (${loc.CityName})` : '');
+                        let isSelected = schedule && (schedule.WorkLocation === loc.LocationName || schedule.WorkLocation === label);
+                        return `<option value="${DashboardComponent.escapeHtml(optVal)}" data-city="${DashboardComponent.escapeHtml(loc.CityName || '')}" ${isSelected ? "selected" : ""}>${DashboardComponent.escapeHtml(label)}</option>`;
+                      }).join("")}
+                      ${schedule && schedule.WorkLocation && !activeLocations.some(l => l.LocationName === schedule.WorkLocation) ? `<option value="${DashboardComponent.escapeHtml(schedule.WorkLocation)}" selected>${DashboardComponent.escapeHtml(schedule.WorkLocation)}</option>` : ""}
+                    </select>
+                  </div>
+                </div>
+
+                <!-- SECTION 3: BILLING CYCLE & DUE RULES -->
                 <div class="sch-section-label sec-teal">
                   <span class="sec-dot"></span> BILLING CYCLE & DUE SCHEDULE
                 </div>
@@ -254,7 +336,7 @@ const RecurringComponent = (function () {
                   <span id="sch-due-preview-text">Bill generates on Day ${initialGenDay} → Due on Day ${initialGenDay + initialDueIn} of the month (+${initialDueIn} days)</span>
                 </div>
 
-                <!-- SECTION 3: REFERENCE & AUDIT -->
+                <!-- SECTION 4: REFERENCE & AUDIT -->
                 <div class="sch-section-label sec-amber">
                   <span class="sec-dot"></span> REFERENCE & AUDIT TRAIL
                 </div>
@@ -288,9 +370,14 @@ const RecurringComponent = (function () {
   async function saveSchedule(e, scheduleId) {
     e.preventDefault();
     let billName = document.getElementById("sch-billname").value.trim();
+    let uniqueId = document.getElementById("sch-unique-id")?.value.trim() || ("SCH-" + Date.now());
     let companyId = document.getElementById("sch-company").value;
     let vendorId = document.getElementById("sch-vendor").value;
     let categoryId = document.getElementById("sch-category").value;
+    let accountingEntity = document.getElementById("sch-accounting-entity")?.value.trim() || "";
+    let accountingLedger = document.getElementById("sch-accounting-ledger")?.value.trim() || "";
+    let cityName = document.getElementById("sch-city-name")?.value.trim() || "";
+    let workLocation = document.getElementById("sch-work-location")?.value || "";
     let expectedAmount = parseFloat(document.getElementById("sch-amount").value) || 0;
     let frequency = document.getElementById("sch-frequency").value;
     let generationDay = parseInt(document.getElementById("sch-genday").value, 10) || 10;
@@ -304,6 +391,7 @@ const RecurringComponent = (function () {
 
     let scheduleData = {
       ScheduleID: scheduleId || undefined,
+      UniqueID: uniqueId,
       BillName: billName,
       CompanyID: companyId,
       CompanyName: comp ? comp.CompanyName : "",
@@ -311,6 +399,10 @@ const RecurringComponent = (function () {
       VendorName: vend ? vend.VendorName : "",
       CategoryID: categoryId,
       CategoryName: cat ? cat.CategoryName : "",
+      AccountingEntity: accountingEntity,
+      AccountingLedger: accountingLedger,
+      CityName: cityName,
+      WorkLocation: workLocation,
       ExpectedAmount: expectedAmount,
       Frequency: frequency,
       DueRule: "GenerationPlusDays",
@@ -429,10 +521,10 @@ const RecurringComponent = (function () {
           </div>
           <div class="modal-body">
             <!-- Step 1: Download Template -->
-            <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:var(--radius-md); padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.12); border-radius:var(--radius-md); padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
               <div>
-                <div style="font-weight:700; font-size:0.88rem; color:var(--navy-900);">Step 1: Download Standard Template</div>
-                <div style="font-size:0.75rem; color:var(--slate-500);">Use our sample template to format your Excel or CSV recurring schedules.</div>
+                <div style="font-weight:700; font-size:0.88rem; color:#ffffff;">Step 1: Download Standard Template</div>
+                <div style="font-size:0.75rem; color:#94a3b8;">Use our sample template to format your Excel or CSV recurring schedules.</div>
               </div>
               <button type="button" class="btn btn-sm btn-secondary" onclick="RecurringComponent.downloadSampleTemplate()">
                 📥 Download Template (.csv)
@@ -448,7 +540,7 @@ const RecurringComponent = (function () {
             <!-- Paste CSV Alternative -->
             <div class="form-group" style="margin-bottom:1.25rem;">
               <details>
-                <summary style="font-size:0.8rem; color:var(--slate-600); cursor:pointer; font-weight:600; margin-bottom:0.5rem;">
+                <summary style="font-size:0.8rem; color:#94a3b8; cursor:pointer; font-weight:600; margin-bottom:0.5rem;">
                   Or paste CSV text manually
                 </summary>
                 <textarea id="rec-import-csv-text" class="form-control" rows="3" placeholder="Paste CSV text here including header row..." oninput="RecurringComponent.handleImportTextPaste(event)" style="font-family:monospace; font-size:0.75rem;"></textarea>
@@ -457,7 +549,7 @@ const RecurringComponent = (function () {
 
             <!-- Step 3: Live Preview -->
             <div id="rec-import-preview-area">
-              <div style="padding:1.5rem; text-align:center; color:var(--slate-400); background:var(--slate-50); border:1px dashed var(--slate-300); border-radius:var(--radius-md);">
+              <div style="padding:1.5rem; text-align:center; color:#94a3b8; background:rgba(255, 255, 255, 0.02); border:1px dashed rgba(255, 255, 255, 0.15); border-radius:var(--radius-md);">
                 Upload a file or paste CSV text above to preview schedules before saving.
               </div>
             </div>
@@ -605,6 +697,11 @@ const RecurringComponent = (function () {
       let compInput = r["company name"] || r["company"] || r["paying entity"] || "";
       let vendInput = r["vendor name"] || r["vendor"] || r["payee"] || "";
       let catInput = r["category name"] || r["category"] || r["expense head"] || "";
+      let uniqueIdVal = r["unique id"] || r["uniqueid"] || r["schedule code"] || r["code"] || "";
+      let acctEntityVal = r["accounting entity"] || r["entity"] || "";
+      let acctLedgerVal = r["accounting ledger"] || r["ledger"] || "";
+      let cityVal = r["city name"] || r["city"] || "";
+      let workLocVal = r["work location"] || r["location"] || "";
       let amountVal = parseFloat(r["expected amount"] || r["amount"] || r["expected"] || 0) || 0;
       let freqVal = r["frequency"] || "Monthly";
       let genDayVal = parseInt(r["generation day"] || r["gen day"] || r["due day"] || r["day"] || 10, 10) || 10;
@@ -637,12 +734,17 @@ const RecurringComponent = (function () {
 
       let scheduleObj = {
         BillName: billName,
+        UniqueID: uniqueIdVal || ("SCH-" + Date.now().toString(36).toUpperCase()),
         CompanyID: companyId,
         CompanyName: companyName,
         VendorID: vendorId,
         VendorName: vendorName,
         CategoryID: categoryId,
         CategoryName: categoryName,
+        AccountingEntity: acctEntityVal,
+        AccountingLedger: acctLedgerVal,
+        CityName: cityVal,
+        WorkLocation: workLocVal,
         ExpectedAmount: amountVal,
         ExpectedAmountFormatted: "₹" + amountVal.toLocaleString("en-IN"),
         Frequency: ["Monthly", "Weekly", "Quarterly", "Yearly"].includes(freqVal) ? freqVal : "Monthly",
@@ -672,7 +774,7 @@ const RecurringComponent = (function () {
 
     if (!rows || rows.length === 0) {
       container.innerHTML = `
-        <div style="padding:1.5rem; text-align:center; color:var(--slate-400); background:var(--slate-50); border:1px dashed var(--slate-300); border-radius:var(--radius-md);">
+        <div style="padding:1.5rem; text-align:center; color:#94a3b8; background:rgba(255, 255, 255, 0.02); border:1px dashed rgba(255, 255, 255, 0.15); border-radius:var(--radius-md);">
           No valid schedules detected yet. Please upload a CSV/Excel file or paste CSV text above.
         </div>
       `;
@@ -799,6 +901,63 @@ const RecurringComponent = (function () {
 
     let prevEntityEl = document.getElementById("sch-prev-entity");
     if (prevEntityEl) prevEntityEl.textContent = compName;
+
+    // Sidebar Location & Ledger Live Updates
+    let cityVal = document.getElementById("sch-city-name")?.value.trim() || "";
+    let locVal = document.getElementById("sch-work-location")?.value || "";
+    let ledgerVal = document.getElementById("sch-accounting-ledger")?.value.trim() || "";
+
+    let prevLocEl = document.getElementById("sch-prev-loc");
+    if (prevLocEl) {
+      let combined = [cityVal, locVal].filter(Boolean).join(" • ");
+      prevLocEl.textContent = combined || "Not set";
+      prevLocEl.title = combined || "Not set";
+    }
+
+    let prevLedgerEl = document.getElementById("sch-prev-ledger");
+    if (prevLedgerEl) {
+      prevLedgerEl.textContent = ledgerVal || "Not set";
+      prevLedgerEl.title = ledgerVal || "Not set";
+    }
+  }
+
+  function generateUniqueId() {
+    let input = document.getElementById("sch-unique-id");
+    if (!input) return;
+    let year = new Date().getFullYear();
+    let rand = Math.floor(1000 + Math.random() * 9000);
+    let cityInput = (document.getElementById("sch-city-name")?.value || "").trim().slice(0, 3).toUpperCase();
+    let code = cityInput ? `REC-${cityInput}-${year}-${rand}` : `REC-${year}-${rand}`;
+    input.value = code;
+    updateDuePreview();
+  }
+
+  function handleLocationChange() {
+    let locSelect = document.getElementById("sch-work-location");
+    let cityInput = document.getElementById("sch-city-name");
+    if (locSelect && cityInput) {
+      let opt = locSelect.options[locSelect.selectedIndex];
+      let cityFromLoc = opt ? opt.getAttribute("data-city") : "";
+      if (cityFromLoc && !cityInput.value.trim()) {
+        cityInput.value = cityFromLoc;
+      }
+    }
+    updateDuePreview();
+  }
+
+  function onCityInputChange() {
+    let cityInput = (document.getElementById("sch-city-name")?.value || "").toLowerCase().trim();
+    let locSelect = document.getElementById("sch-work-location");
+    if (locSelect && cityInput) {
+      for (let i = 0; i < locSelect.options.length; i++) {
+        let optCity = (locSelect.options[i].getAttribute("data-city") || "").toLowerCase().trim();
+        if (optCity && optCity === cityInput && !locSelect.value) {
+          locSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+    updateDuePreview();
   }
 
   return {
@@ -807,6 +966,9 @@ const RecurringComponent = (function () {
     openScheduleModal: openScheduleModal,
     saveSchedule: saveSchedule,
     generateCycle: generateCycle,
+    generateUniqueId: generateUniqueId,
+    handleLocationChange: handleLocationChange,
+    onCityInputChange: onCityInputChange,
     openImportModal: openImportModal,
     downloadSampleTemplate: downloadSampleTemplate,
     handleImportFileSelect: handleImportFileSelect,

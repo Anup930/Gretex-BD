@@ -7,6 +7,7 @@
 const AdminComponent = (function () {
   let cachedData = null;
   let activeTab = "users";
+  let activeCityFilter = "";
 
   async function render(container) {
     cachedData = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded) ? BillDeskDataStore.getData() : await BillDeskAPI.getInitialData();
@@ -15,7 +16,7 @@ const AdminComponent = (function () {
       <div class="view-header">
         <div class="view-title-group">
           <h1>System Administration & Master Data</h1>
-          <p>Configure user capabilities, custom roles, entity masters, and bank accounts.</p>
+          <p>Configure user capabilities, custom roles, entity masters, cities & work locations, and bank accounts.</p>
         </div>
       </div>
 
@@ -26,6 +27,7 @@ const AdminComponent = (function () {
         <button class="btn ${activeTab === 'vendors' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('vendors')">Vendors & Payees</button>
         <button class="btn ${activeTab === 'categories' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('categories')">Expense Categories</button>
         <button class="btn ${activeTab === 'banks' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('banks')">Bank Accounts</button>
+        <button class="btn ${activeTab === 'locations' ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.switchTab('locations')">📍 Cities & Work Locations</button>
       </div>
 
       <div id="admin-tab-content">
@@ -49,6 +51,7 @@ const AdminComponent = (function () {
     if (activeTab === "vendors") return renderVendorsTab();
     if (activeTab === "categories") return renderCategoriesTab();
     if (activeTab === "banks") return renderBanksTab();
+    if (activeTab === "locations") return renderLocationsTab();
     return renderUsersTab();
   }
 
@@ -168,6 +171,7 @@ const AdminComponent = (function () {
             <thead>
               <tr>
                 <th>Vendor Name</th>
+                <th>Contact Person</th>
                 <th>Beneficiary Payee</th>
                 <th>Bank & Account</th>
                 <th>IFSC</th>
@@ -178,7 +182,22 @@ const AdminComponent = (function () {
             <tbody>
               ${vendors.map(v => `
                 <tr>
-                  <td><strong>${DashboardComponent.escapeHtml(v.VendorName)}</strong></td>
+                  <td>
+                    <strong>${DashboardComponent.escapeHtml(v.VendorName)}</strong>
+                    ${v.Aliases ? `<div style="font-size:0.75rem; color:#94a3b8;">${DashboardComponent.escapeHtml(v.Aliases)}</div>` : ''}
+                  </td>
+                  <td>
+                    ${(v.ContactPerson || v.ContactName) ? `
+                      <div style="font-weight:600; color:#38bdf8; display:flex; align-items:center; gap:0.35rem;">
+                        <span>👤</span>
+                        <span>${DashboardComponent.escapeHtml(v.ContactPerson || v.ContactName)}</span>
+                      </div>
+                      <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px; display:flex; flex-direction:column; gap:1px;">
+                        ${(v.ContactPhone || v.Phone) ? `<span>📞 ${DashboardComponent.escapeHtml(v.ContactPhone || v.Phone)}</span>` : ''}
+                        ${(v.ContactEmail || v.Email) ? `<span>✉ ${DashboardComponent.escapeHtml(v.ContactEmail || v.Email)}</span>` : ''}
+                      </div>
+                    ` : '<span style="color:#64748b; font-size:0.8rem;">-</span>'}
+                  </td>
                   <td>${DashboardComponent.escapeHtml(v.PayeeName || v.VendorName)}</td>
                   <td>${v.BankName || "-"} (${v.BankAccount || "-"})</td>
                   <td><code>${v.IFSC || "-"}</code></td>
@@ -281,6 +300,135 @@ const AdminComponent = (function () {
     `;
   }
 
+  // Work Locations & Cities
+  function renderLocationsTab() {
+    let locations = (typeof BillDeskAPI !== "undefined" && BillDeskAPI.getLocations) ? BillDeskAPI.getLocations() : (cachedData.locations || []);
+    let cities = [...new Set(locations.filter(l => l.CityName).map(l => l.CityName.trim()))].sort();
+    let totalCount = locations.length;
+
+    return `
+      <!-- City Metrics & Quick Filter Pills -->
+      <div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(255, 255, 255, 0.12); border-radius:var(--radius-lg); padding:1.25rem 1.5rem; margin-bottom:1.5rem; backdrop-filter:blur(16px);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <h3 style="margin:0; font-size:1.15rem; color:#ffffff; display:flex; align-items:center; gap:0.5rem;">
+              <span>📍</span> Operational Cities & Work Locations Master
+            </h3>
+            <p style="margin:0.25rem 0 0; font-size:0.78rem; color:#94a3b8;">
+              ${cities.length} Active Cities across ${totalCount} Office Locations & Regional Hubs. Used in recurring schedules and billing compliance.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-sm btn-secondary" onclick="AdminComponent.openCityModal()" style="border-color:rgba(56, 189, 248, 0.35); color:#38bdf8;">
+              + Quick Add City
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="AdminComponent.openLocationModal()">
+              + Add Work Location
+            </button>
+          </div>
+        </div>
+
+        <!-- City Quick Filter Pills -->
+        <div style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;" id="city-filter-pills">
+          <button class="btn btn-xs ${!activeCityFilter ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.filterByCity('')" style="border-radius:999px;">
+            All Cities (${totalCount})
+          </button>
+          ${cities.map(c => {
+            let count = locations.filter(l => l.CityName === c).length;
+            let isActive = activeCityFilter.toLowerCase() === c.toLowerCase();
+            return `
+              <button class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-secondary'}" onclick="AdminComponent.filterByCity('${DashboardComponent.escapeHtml(c)}')" style="border-radius:999px;">
+                📍 ${DashboardComponent.escapeHtml(c)} <span style="opacity:0.75; font-size:0.7rem; margin-left:2px;">(${count})</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
+
+      <!-- Main Locations Table Card -->
+      <div class="table-card">
+        <div class="table-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+          <div class="search-box" style="max-width:320px;">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="loc-search" class="search-input" placeholder="Search location, code, city, office type..." oninput="AdminComponent.filterLocationsTable()">
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <select id="loc-type-filter" class="form-select" style="width:auto; font-size:0.8rem;" onchange="AdminComponent.filterLocationsTable()">
+              <option value="">All Office Types</option>
+              <option value="Corporate Office">Corporate Office</option>
+              <option value="Head Office">Head Office</option>
+              <option value="Branch Office">Branch Office</option>
+              <option value="Regional Hub">Regional Hub</option>
+              <option value="Registered Office">Registered Office</option>
+              <option value="Warehouse">Warehouse</option>
+              <option value="Remote">Remote / WFH</option>
+              <option value="Client Site">Client Site</option>
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="AdminComponent.openLocationModal()">+ Add Location</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="locations-table">
+            <thead>
+              <tr>
+                <th>Location Code</th>
+                <th>Location Name</th>
+                <th>City</th>
+                <th>Office Type</th>
+                <th>Address / Landmark</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${locations.length === 0 ? `
+                <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--slate-400);">No locations configured yet. Click "+ Add Work Location" to add one.</td></tr>
+              ` : ""}
+              ${locations.map(loc => {
+                let searchTokens = [loc.LocationCode, loc.LocationName, loc.CityName, loc.OfficeType, loc.Address].filter(Boolean).join(" ").toLowerCase();
+                let isMatchCity = !activeCityFilter || (loc.CityName && loc.CityName.toLowerCase() === activeCityFilter.toLowerCase());
+                return `
+                  <tr data-id="${loc.LocationID}" data-search="${DashboardComponent.escapeHtml(searchTokens)}" data-city="${DashboardComponent.escapeHtml((loc.CityName || '').toLowerCase())}" data-type="${DashboardComponent.escapeHtml(loc.OfficeType || '')}" style="${isMatchCity ? '' : 'display:none;'}">
+                    <td>
+                      <span style="font-family:monospace; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.12); padding:2px 7px; border-radius:5px; border:1px solid rgba(56,189,248,0.25);">
+                        ${DashboardComponent.escapeHtml(loc.LocationCode || 'LOC-GEN')}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>${DashboardComponent.escapeHtml(loc.LocationName)}</strong>
+                    </td>
+                    <td>
+                      <span class="badge" style="background:rgba(56,189,248,0.14); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-weight:700;">
+                        📍 ${DashboardComponent.escapeHtml(loc.CityName || '-')}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge badge-draft">${DashboardComponent.escapeHtml(loc.OfficeType || 'Branch Office')}</span>
+                    </td>
+                    <td style="font-size:0.75rem; color:#94a3b8; max-width:260px;">
+                      ${DashboardComponent.escapeHtml(loc.Address || '-')}
+                    </td>
+                    <td>
+                      ${loc.IsActive !== false ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-rejected">Inactive</span>'}
+                    </td>
+                    <td>
+                      <div style="display:flex; gap:0.35rem;">
+                        <button class="btn btn-xs btn-secondary" onclick="AdminComponent.editLocation('${loc.LocationID}')">Edit</button>
+                        <button class="btn btn-xs btn-danger" onclick="AdminComponent.deleteLocation('${loc.LocationID}')" title="Delete Location">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   // Settings & Apps Script URL
   function renderSettingsTab() {
     let currentUrl = BillDeskAPI.getEndpointUrl();
@@ -288,7 +436,7 @@ const AdminComponent = (function () {
     let currentMode = BillDeskAPI.getMode();
 
     return `
-      <div class="panel-card" style="max-width:800px; background:var(--white);">
+      <div class="panel-card" style="max-width:800px;">
         <h4>Google Apps Script & Database Settings</h4>
         
         <div class="form-group">
@@ -303,9 +451,9 @@ const AdminComponent = (function () {
           <div class="form-hint">Open your Google Sheet "DB" in Google Drive. Copy the ID from the URL (between <code>/d/</code> and <code>/edit</code>).</div>
         </div>
 
-        <div class="form-group" style="background:var(--navy-50); border:1px solid var(--navy-100); padding:0.85rem; border-radius:var(--radius-md);">
-          <label class="form-label" style="color:var(--navy-900); font-weight:700;">Google Drive Files & Attachments Folder</label>
-          <div style="font-size:0.82rem; color:var(--slate-700); margin-bottom:0.4rem;">
+        <div class="form-group" style="background:rgba(30, 58, 138, 0.25); border:1px solid rgba(59, 130, 246, 0.3); padding:0.85rem; border-radius:var(--radius-md);">
+          <label class="form-label" style="color:#ffffff; font-weight:700;">Google Drive Files & Attachments Folder</label>
+          <div style="font-size:0.82rem; color:#cbd5e1; margin-bottom:0.4rem;">
             Uploaded invoices and payment proofs are stored in this Drive folder:
           </div>
           <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
@@ -534,6 +682,26 @@ const AdminComponent = (function () {
                 <label class="form-label">Short Name / Aliases</label>
                 <input type="text" id="m-vend-alias" class="form-control" value="${DashboardComponent.escapeHtml(vend.Aliases || '')}" placeholder="e.g. TATA, TPCL">
               </div>
+              <!-- Contact Person Details -->
+              <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+                  <span>👤 Primary Contact Person Details</span>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                  <label class="form-label">Contact Person Name *</label>
+                  <input type="text" id="m-vend-contact-name" class="form-control" value="${DashboardComponent.escapeHtml(vend.ContactPerson || vend.ContactName || '')}" placeholder="e.g. Rahul Sharma" required>
+                </div>
+                <div class="form-row">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Contact Phone Number <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">(Optional)</span></label>
+                    <input type="tel" id="m-vend-contact-phone" class="form-control" value="${DashboardComponent.escapeHtml(vend.ContactPhone || vend.Phone || '')}" placeholder="e.g. +91 9876543210">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Contact Email <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">(Optional)</span></label>
+                    <input type="email" id="m-vend-contact-email" class="form-control" value="${DashboardComponent.escapeHtml(vend.ContactEmail || vend.Email || '')}" placeholder="e.g. rahul.sharma@vendor.com">
+                  </div>
+                </div>
+              </div>
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label">Bank Name</label>
@@ -580,6 +748,9 @@ const AdminComponent = (function () {
     let name = document.getElementById("m-vend-name")?.value.trim();
     let payee = document.getElementById("m-vend-payee")?.value.trim();
     let alias = document.getElementById("m-vend-alias")?.value.trim();
+    let contactName = document.getElementById("m-vend-contact-name")?.value.trim();
+    let contactPhone = document.getElementById("m-vend-contact-phone")?.value.trim();
+    let contactEmail = document.getElementById("m-vend-contact-email")?.value.trim();
     let bank = document.getElementById("m-vend-bank")?.value.trim();
     let acct = document.getElementById("m-vend-acct")?.value.trim();
     let ifsc = document.getElementById("m-vend-ifsc")?.value.trim();
@@ -588,11 +759,18 @@ const AdminComponent = (function () {
     let addr = document.getElementById("m-vend-addr")?.value.trim();
 
     if (!name) return;
+    if (!contactName) {
+      App.showToast("Validation Error: Contact Person Name is required.", "error");
+      return;
+    }
 
     let payload = {
       VendorName: name,
       PayeeName: payee || name,
       Aliases: alias,
+      ContactPerson: contactName,
+      ContactPhone: contactPhone,
+      ContactEmail: contactEmail,
       BankName: bank,
       BankAccount: acct,
       IFSC: ifsc,
@@ -845,6 +1023,220 @@ const AdminComponent = (function () {
   }
 
   // ==========================================
+  // WORK LOCATION & CITY HANDLERS
+  // ==========================================
+  function filterByCity(cityName) {
+    activeCityFilter = (cityName || "").trim();
+    filterLocationsTable();
+    let pills = document.querySelectorAll("#city-filter-pills button");
+    pills.forEach(btn => {
+      let isMatch = (!activeCityFilter && btn.textContent.includes("All Cities")) || (activeCityFilter && btn.textContent.toLowerCase().includes(activeCityFilter.toLowerCase()));
+      btn.className = `btn btn-xs ${isMatch ? 'btn-primary' : 'btn-secondary'}`;
+    });
+  }
+
+  function filterLocationsTable() {
+    let search = (document.getElementById("loc-search")?.value || "").toLowerCase().trim();
+    let typeFilter = (document.getElementById("loc-type-filter")?.value || "").toLowerCase().trim();
+    let rows = document.querySelectorAll("#locations-table tbody tr[data-id]");
+
+    rows.forEach(r => {
+      let rSearch = r.getAttribute("data-search") || "";
+      let rCity = r.getAttribute("data-city") || "";
+      let rType = (r.getAttribute("data-type") || "").toLowerCase();
+
+      let matchSearch = !search || rSearch.includes(search);
+      let matchCity = !activeCityFilter || rCity === activeCityFilter.toLowerCase();
+      let matchType = !typeFilter || rType.includes(typeFilter);
+
+      r.style.display = (matchSearch && matchCity && matchType) ? "" : "none";
+    });
+  }
+
+  function editLocation(id) {
+    let locations = (typeof BillDeskAPI !== "undefined" && BillDeskAPI.getLocations) ? BillDeskAPI.getLocations() : [];
+    let loc = locations.find(l => String(l.LocationID) === String(id));
+    openLocationModal(loc);
+  }
+
+  function openCityModal() {
+    let cityName = prompt("Enter New City Name (e.g. Chandigarh, Ahmedabad, Surat, Jaipur):");
+    if (!cityName || !cityName.trim()) return;
+    openLocationModal(null, cityName.trim());
+  }
+
+  function openLocationModal(existingLoc = null, prefilledCity = "") {
+    let isEdit = Boolean(existingLoc && existingLoc.LocationID);
+    let loc = existingLoc || {};
+    let locations = (typeof BillDeskAPI !== "undefined" && BillDeskAPI.getLocations) ? BillDeskAPI.getLocations() : [];
+    let knownCities = [...new Set(locations.filter(l => l.CityName).map(l => l.CityName.trim()))];
+    let cityName = loc.CityName || prefilledCity || "";
+    let defaultCode = loc.LocationCode || `LOC-${(cityName ? cityName.slice(0,3).toUpperCase() : 'HUB')}-${Math.floor(100 + Math.random() * 900)}`;
+
+    let modalHtml = `
+      <div class="modal-backdrop active" id="location-modal">
+        <div class="modal-dialog" style="max-width:580px;">
+          <div class="modal-header">
+            <div class="modal-title">${isEdit ? 'Edit Work Location & City' : 'Register New Work Location'}</div>
+            <button class="modal-close-btn" onclick="App.closeModal('location-modal')">&times;</button>
+          </div>
+          <form onsubmit="AdminComponent.submitLocation(event, '${isEdit ? loc.LocationID : ''}')">
+            <div class="modal-body">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">City Name *</label>
+                  <input type="text" id="m-loc-city" list="m-known-cities" class="form-control" value="${DashboardComponent.escapeHtml(cityName)}" placeholder="e.g. Mumbai, Kolkata, New Delhi" required oninput="AdminComponent.suggestLocationCode()">
+                  <datalist id="m-known-cities">
+                    ${knownCities.map(c => `<option value="${DashboardComponent.escapeHtml(c)}">`).join("")}
+                    <option value="Mumbai">
+                    <option value="Kolkata">
+                    <option value="New Delhi">
+                    <option value="Bengaluru">
+                    <option value="Pune">
+                    <option value="Hyderabad">
+                    <option value="Chennai">
+                    <option value="Ahmedabad">
+                    <option value="Jaipur">
+                  </datalist>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Location Code *</label>
+                  <div style="display:flex; gap:0.4rem;">
+                    <input type="text" id="m-loc-code" class="form-control" value="${DashboardComponent.escapeHtml(defaultCode)}" placeholder="e.g. LOC-MUM-BKC" required>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="AdminComponent.generateLocationCode()" style="white-space:nowrap;">⚡ Auto</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Location Name / Office Title *</label>
+                <input type="text" id="m-loc-name" class="form-control" value="${DashboardComponent.escapeHtml(loc.LocationName || '')}" placeholder="e.g. Corporate Office - BKC Mumbai" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Office Type *</label>
+                <select id="m-loc-type" class="form-select" required>
+                  ${[
+                    "Corporate Office",
+                    "Head Office (HO)",
+                    "Branch Office",
+                    "Regional Hub",
+                    "Registered Office",
+                    "Warehouse / Logistics Facility",
+                    "Remote / WFH",
+                    "Client Site / On-Premise"
+                  ].map(t => `<option value="${t}" ${(loc.OfficeType === t || (!loc.OfficeType && t === 'Branch Office')) ? 'selected' : ''}>${t}</option>`).join("")}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Physical Address / Landmark Details</label>
+                <textarea id="m-loc-addr" class="form-control" rows="2" placeholder="Building, Wing, Road, Landmark, PIN Code">${DashboardComponent.escapeHtml(loc.Address || '')}</textarea>
+              </div>
+
+              <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
+                <input type="checkbox" id="m-loc-active" ${loc.IsActive !== false ? 'checked' : ''} style="width:18px; height:18px;">
+                <label for="m-loc-active" class="form-label" style="margin:0; cursor:pointer;">Active Work Location (Available in schedule dropdowns)</label>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal('location-modal')">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="m-loc-submit-btn">${isEdit ? 'Update Location' : 'Save Work Location'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("modal-container").innerHTML = modalHtml;
+  }
+
+  function suggestLocationCode() {
+    let cityInput = (document.getElementById("m-loc-city")?.value || "").trim();
+    let codeInput = document.getElementById("m-loc-code");
+    if (codeInput && (!codeInput.value || codeInput.value.startsWith("LOC-HUB"))) {
+      let prefix = cityInput ? cityInput.slice(0, 3).toUpperCase() : "HUB";
+      codeInput.value = `LOC-${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+  }
+
+  function generateLocationCode() {
+    let cityInput = (document.getElementById("m-loc-city")?.value || "").trim();
+    let prefix = cityInput ? cityInput.slice(0, 3).toUpperCase() : "LOC";
+    let codeInput = document.getElementById("m-loc-code");
+    if (codeInput) {
+      codeInput.value = `LOC-${prefix}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+  }
+
+  async function submitLocation(event, editId) {
+    if (event) event.preventDefault();
+    let city = document.getElementById("m-loc-city")?.value.trim();
+    let code = document.getElementById("m-loc-code")?.value.trim();
+    let name = document.getElementById("m-loc-name")?.value.trim();
+    let type = document.getElementById("m-loc-type")?.value;
+    let addr = document.getElementById("m-loc-addr")?.value.trim();
+    let isActive = document.getElementById("m-loc-active") ? document.getElementById("m-loc-active").checked : true;
+
+    if (!city || !name) {
+      alert("City Name and Location Name are required.");
+      return;
+    }
+
+    let payload = {
+      CityName: city,
+      LocationCode: code || `LOC-${city.slice(0,3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
+      LocationName: name,
+      OfficeType: type || "Branch Office",
+      Address: addr || "",
+      IsActive: isActive
+    };
+    if (editId) payload.LocationID = editId;
+
+    let btn = document.getElementById("m-loc-submit-btn");
+    let origText = btn ? btn.innerHTML : "Save Work Location";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span style="display:inline-block; animation:spin 1s infinite linear; margin-right:6px;">⌛</span> Saving...`;
+    }
+
+    try {
+      await BillDeskAPI.saveLocation(payload, BillDeskAuth.getCurrentUser()?.email);
+      App.showToast(`✓ Work location '${name}' saved successfully!`, "success");
+      cachedData = await BillDeskAPI.getInitialData();
+      setTimeout(() => {
+        App.closeModal("location-modal");
+        let container = document.getElementById("admin-tab-content");
+        if (container) container.innerHTML = renderTabContent();
+      }, 400);
+    } catch (e) {
+      App.showToast("Failed to save location: " + e.message, "error");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
+  }
+
+  async function deleteLocation(id) {
+    let locations = (typeof BillDeskAPI !== "undefined" && BillDeskAPI.getLocations) ? BillDeskAPI.getLocations() : [];
+    let loc = locations.find(l => String(l.LocationID) === String(id));
+    let name = loc ? loc.LocationName : "this location";
+
+    if (!confirm(`Are you sure you want to remove '${name}' from active locations?`)) return;
+
+    try {
+      await BillDeskAPI.deleteLocation(id, BillDeskAuth.getCurrentUser()?.email);
+      App.showToast(`✓ Location '${name}' removed successfully!`, "success");
+      cachedData = await BillDeskAPI.getInitialData();
+      let container = document.getElementById("admin-tab-content");
+      if (container) container.innerHTML = renderTabContent();
+    } catch (e) {
+      App.showToast("Failed to delete location: " + e.message, "error");
+    }
+  }
+
+  // ==========================================
   // USER MODAL & CAPABILITIES HANDLERS
   // ==========================================
   function editUser(id) {
@@ -935,34 +1327,46 @@ const AdminComponent = (function () {
                 </div>
               </div>
               <div class="form-group" style="margin-top:0.75rem;">
-                <label class="form-label">Granted Capabilities (Fine-grained Permissions)</label>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem; font-size:0.82rem; background:var(--slate-50); padding:0.75rem; border-radius:var(--radius-sm); border:1px solid var(--slate-200);">
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-enter" ${userCaps.CanEnterBills || role === 'EntryOperator' || isSuper ? 'checked' : ''}> Can Enter Bills (Operator)
+                <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                  <span>Granted Capabilities (Fine-grained Permissions)</span>
+                  <span style="font-size:0.75rem; color:#38bdf8; font-weight:normal;">Auto-synced with Role Preset</span>
+                </label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-size:0.83rem; background:rgba(15, 23, 42, 0.7); padding:0.85rem; border-radius:var(--radius-md); border:1px solid rgba(255, 255, 255, 0.12); box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-enter" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanEnterBills || role === 'EntryOperator' || isSuper ? 'checked' : ''}>
+                    <span>Can Enter Bills (Operator)</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-approve" ${userCaps.CanApproveBills || role === 'Approver' || isSuper ? 'checked' : ''}> Can Approve Bills (Approver)
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-approve" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanApproveBills || role === 'Approver' || isSuper ? 'checked' : ''}>
+                    <span>Can Approve Bills (Approver)</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-pay-init" ${userCaps.CanInitiatePayments || role === 'PaymentInitiator' || isSuper ? 'checked' : ''}> Can Initiate Payments (Maker)
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-pay-init" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanInitiatePayments || role === 'PaymentInitiator' || isSuper ? 'checked' : ''}>
+                    <span>Can Initiate Payments (Maker)</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-pay-conf" ${userCaps.CanConfirmPayments || role === 'PaymentConfirmer' || isSuper ? 'checked' : ''}> Can Confirm Payments (Checker)
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-pay-conf" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanConfirmPayments || role === 'PaymentConfirmer' || isSuper ? 'checked' : ''}>
+                    <span>Can Confirm Payments (Checker)</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-finance" ${userCaps.CanViewFinance || role === 'FinanceUser' || isSuper ? 'checked' : ''}> Can View Finance (Shortfall)
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-finance" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanViewFinance || role === 'FinanceUser' || isSuper ? 'checked' : ''}>
+                    <span>Can View Finance (Shortfall)</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-masters" ${userCaps.CanManageMasters || role === 'FinanceUser' || isSuper ? 'checked' : ''}> Can Manage Masters
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-masters" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanManageMasters || role === 'FinanceUser' || isSuper ? 'checked' : ''}>
+                    <span>Can Manage Masters</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-users" ${userCaps.CanManageUsers || isSuper ? 'checked' : ''}> Can Manage Users
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-users" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanManageUsers || isSuper ? 'checked' : ''}>
+                    <span>Can Manage Users</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-reports" ${userCaps.CanViewReports || role === 'Approver' || role === 'FinanceUser' || isSuper ? 'checked' : ''}> Can View Reports & Audit
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-reports" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanViewReports || role === 'Approver' || role === 'FinanceUser' || isSuper ? 'checked' : ''}>
+                    <span>Can View Reports & Audit</span>
                   </label>
-                  <label style="display:flex; align-items:center; gap:0.4rem;">
-                    <input type="checkbox" id="cap-config" ${userCaps.CanManageConfig || isSuper ? 'checked' : ''}> Can Manage Config
+                  <label style="display:flex; align-items:center; gap:0.5rem; color:#f1f5f9; cursor:pointer; padding:0.35rem 0.5rem; border-radius:6px; background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.06);">
+                    <input type="checkbox" id="cap-config" style="accent-color:#38bdf8; width:16px; height:16px; cursor:pointer;" ${userCaps.CanManageConfig || isSuper ? 'checked' : ''}>
+                    <span>Can Manage Config</span>
                   </label>
                 </div>
               </div>
@@ -1075,13 +1479,14 @@ const AdminComponent = (function () {
       title: "Vendors & Payees",
       entity: "Vendor",
       filename: "Vendors_Import_Template.csv",
-      headers: ["Vendor Name", "Beneficiary Payee Name", "Short Name / Aliases", "Bank Name", "Bank Account Number", "IFSC Code", "GSTIN", "PAN", "Address"],
+      headers: ["Vendor Name", "Contact Person", "Contact Phone", "Contact Email", "Beneficiary Payee Name", "Short Name / Aliases", "Bank Name", "Bank Account Number", "IFSC Code", "GSTIN", "PAN", "Address"],
       sample: [
-        ["Tata Tele Business Services", "Tata Teleservices Ltd", "Tata Tele", "HDFC Bank", "50200098765432", "HDFC0000001", "27AAACT1234E1Z1", "AAACT1234E", "Mumbai, Maharashtra"],
-        ["Amazon Web Services India", "AWS India Cloud Pvt Ltd", "AWS", "ICICI Bank", "002105009876", "ICIC0000021", "27AABCA1234F1Z9", "AABCA1234F", "Bengaluru, Karnataka"]
+        ["Tata Tele Business Services", "Amit Verma", "+91 9820011223", "amit.verma@tatatele.com", "Tata Teleservices Ltd", "Tata Tele", "HDFC Bank", "50200098765432", "HDFC0000001", "27AAACT1234E1Z1", "AAACT1234E", "Mumbai, Maharashtra"],
+        ["Amazon Web Services India", "Priya Nair", "+91 9845012345", "priya.nair@amazon.com", "AWS India Cloud Pvt Ltd", "AWS", "ICICI Bank", "002105009876", "ICIC0000021", "27AABCA1234F1Z9", "AABCA1234F", "Bengaluru, Karnataka"]
       ],
       previewCols: [
         { label: "Vendor Name", key: "VendorName" },
+        { label: "Contact Person", key: "ContactPerson" },
         { label: "Payee Name", key: "PayeeName" },
         { label: "Bank Name", key: "BankName" },
         { label: "Account #", key: "BankAccount" },
@@ -1094,6 +1499,9 @@ const AdminComponent = (function () {
           VendorName: name,
           PayeeName: r["beneficiary payee name"] || r["payee name"] || r["payee"] || name,
           Aliases: r["short name / aliases"] || r["aliases"] || r["alias"] || "",
+          ContactPerson: r["contact person"] || r["contact person name"] || r["contact"] || r["contact name"] || "",
+          ContactPhone: r["contact phone"] || r["phone"] || r["phone number"] || r["mobile"] || "",
+          ContactEmail: r["contact email"] || r["email"] || r["email address"] || "",
           BankName: r["bank name"] || r["bank"] || "",
           BankAccount: r["bank account number"] || r["bank account"] || r["account number"] || r["account"] || "",
           IFSC: r["ifsc code"] || r["ifsc"] || "",
@@ -1196,10 +1604,10 @@ const AdminComponent = (function () {
           </div>
           <div class="modal-body">
             <!-- Step 1: Download Template -->
-            <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:var(--radius-md); padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.12); border-radius:var(--radius-md); padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
               <div>
-                <div style="font-weight:700; font-size:0.88rem; color:var(--navy-900);">Step 1: Download Standard Template</div>
-                <div style="font-size:0.75rem; color:var(--slate-500);">Use our sample template to format your Excel or CSV data.</div>
+                <div style="font-weight:700; font-size:0.88rem; color:#ffffff;">Step 1: Download Standard Template</div>
+                <div style="font-size:0.75rem; color:#94a3b8;">Use our sample template to format your Excel or CSV data.</div>
               </div>
               <button type="button" class="btn btn-sm btn-secondary" onclick="AdminComponent.downloadSampleTemplate('${type}')">
                 📥 Download Template (.csv)
@@ -1215,7 +1623,7 @@ const AdminComponent = (function () {
             <!-- Paste CSV Alternative -->
             <div class="form-group" style="margin-bottom:1.25rem;">
               <details>
-                <summary style="font-size:0.8rem; color:var(--slate-600); cursor:pointer; font-weight:600; margin-bottom:0.5rem;">
+                <summary style="font-size:0.8rem; color:#94a3b8; cursor:pointer; font-weight:600; margin-bottom:0.5rem;">
                   Or paste CSV text manually
                 </summary>
                 <textarea id="import-csv-text" class="form-control" rows="3" placeholder="Paste CSV text here including header row..." oninput="AdminComponent.handleImportTextPaste(event, '${type}')" style="font-family:monospace; font-size:0.75rem;"></textarea>
@@ -1224,7 +1632,7 @@ const AdminComponent = (function () {
 
             <!-- Step 3: Live Preview -->
             <div id="import-preview-area">
-              <div style="padding:1.5rem; text-align:center; color:var(--slate-400); background:var(--slate-50); border:1px dashed var(--slate-300); border-radius:var(--radius-md);">
+              <div style="padding:1.5rem; text-align:center; color:#94a3b8; background:rgba(255, 255, 255, 0.02); border:1px dashed rgba(255, 255, 255, 0.15); border-radius:var(--radius-md);">
                 Upload a file or paste data above to preview records before saving.
               </div>
             </div>
@@ -1385,7 +1793,7 @@ const AdminComponent = (function () {
 
     if (!rows || rows.length === 0) {
       container.innerHTML = `
-        <div style="padding:1.5rem; text-align:center; color:var(--slate-400); background:var(--slate-50); border:1px dashed var(--slate-300); border-radius:var(--radius-md);">
+        <div style="padding:1.5rem; text-align:center; color:#94a3b8; background:rgba(255, 255, 255, 0.02); border:1px dashed rgba(255, 255, 255, 0.15); border-radius:var(--radius-md);">
           No valid records detected yet. Please upload a CSV/Excel file or paste CSV text above.
         </div>
       `;
@@ -1491,7 +1899,17 @@ const AdminComponent = (function () {
     downloadSampleTemplate: downloadSampleTemplate,
     handleImportFileSelect: handleImportFileSelect,
     handleImportTextPaste: handleImportTextPaste,
-    submitImport: submitImport
+    submitImport: submitImport,
+    renderLocationsTab: renderLocationsTab,
+    filterByCity: filterByCity,
+    filterLocationsTable: filterLocationsTable,
+    openLocationModal: openLocationModal,
+    openCityModal: openCityModal,
+    editLocation: editLocation,
+    suggestLocationCode: suggestLocationCode,
+    generateLocationCode: generateLocationCode,
+    submitLocation: submitLocation,
+    deleteLocation: deleteLocation
   };
 })();
 

@@ -146,9 +146,9 @@ const ApprovalComponent = (function () {
                     <td style="color:var(--slate-500);">TDS Deducted:</td>
                     <td style="font-weight:600; text-align:right;">₹${(parseFloat(cycle.TDSAmount) || 0).toLocaleString("en-IN")}</td>
                   </tr>
-                  <tr style="height:36px; background:var(--navy-50);">
-                    <td style="font-weight:700; color:var(--navy-900); padding-left:0.5rem;">Net Payable:</td>
-                    <td style="font-weight:700; color:var(--navy-900); text-align:right; padding-right:0.5rem; font-size:1.05rem;">₹${(parseFloat(cycle.NetPayable) || actualAmt).toLocaleString("en-IN")}</td>
+                  <tr style="height:36px; background:rgba(30, 58, 138, 0.35);">
+                    <td style="font-weight:700; color:#38bdf8; padding-left:0.5rem;">Net Payable:</td>
+                    <td style="font-weight:700; color:#38bdf8; text-align:right; padding-right:0.5rem; font-size:1.05rem;">₹${(parseFloat(cycle.NetPayable) || actualAmt).toLocaleString("en-IN")}</td>
                   </tr>
                 </table>
               </div>
@@ -160,9 +160,9 @@ const ApprovalComponent = (function () {
                   <span class="badge badge-paid">Document Attached</span>
                 </h4>
                 
-                <div style="background:var(--white); border:1px solid var(--slate-200); border-radius:var(--radius-md); padding:0.85rem; margin-bottom:1rem;">
-                  <div style="font-size:0.82rem; font-weight:600;">File: ${attachment ? DashboardComponent.escapeHtml(attachment.FileName) : (cycle.InvoiceFileID || "Invoice_Attached.pdf")}</div>
-                  <div style="font-size:0.75rem; color:var(--slate-500); margin-top:0.25rem;">Uploaded by: ${cycle.ReviewedBy || "Operator"}</div>
+                <div style="background:rgba(255, 255, 255, 0.04); border:1px solid rgba(255, 255, 255, 0.12); border-radius:var(--radius-md); padding:0.85rem; margin-bottom:1rem;">
+                  <div style="font-size:0.82rem; font-weight:600; color:#f1f5f9;">File: ${attachment ? DashboardComponent.escapeHtml(attachment.FileName) : (cycle.InvoiceFileID || "Invoice_Attached.pdf")}</div>
+                  <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.25rem;">Uploaded by: ${cycle.ReviewedBy || "Operator"}</div>
                   <div style="margin-top:0.5rem;">
                     <span class="badge badge-paid">✓ Hash check duplicate: None</span>
                     <span class="badge badge-approved">✓ Currency: INR</span>

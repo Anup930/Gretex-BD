@@ -33,8 +33,8 @@ const PaymentComponent = (function () {
 
       <!-- Section 1: Independent Confirmation Queue (Maker-Checker R-07) -->
       <div class="table-card" style="border-left: 4px solid var(--navy-600);">
-        <div class="table-toolbar" style="background:var(--navy-50);">
-          <div style="font-weight: 700; color: var(--navy-900); display:flex; align-items:center; gap:0.5rem;">
+        <div class="table-toolbar">
+          <div style="font-weight: 700; color: #ffffff; display:flex; align-items:center; gap:0.5rem;">
             <span>1. Independent Confirmation Queue (Maker-Checker Verification)</span>
             <span class="badge badge-pending">Rule R-07 Enforced</span>
           </div>
@@ -313,9 +313,9 @@ const PaymentComponent = (function () {
                 <td style="color:var(--slate-500);">Payment Proof File:</td>
                 <td style="font-weight:600; text-align:right;"><span class="badge badge-paid">${DashboardComponent.escapeHtml(attempt.ProofFileID || "UTR_Receipt.pdf")}</span></td>
               </tr>
-              <tr style="height:40px; background:var(--navy-50);">
-                <td style="font-weight:700; color:var(--navy-900); padding-left:0.5rem;">Amount to Confirm:</td>
-                <td style="font-weight:700; color:var(--navy-900); text-align:right; padding-right:0.5rem; font-size:1.15rem;">₹${(parseFloat(attempt.AmountPaid) || 0).toLocaleString("en-IN")}</td>
+              <tr style="height:40px; background:rgba(30, 58, 138, 0.35);">
+                <td style="font-weight:700; color:#38bdf8; padding-left:0.5rem;">Amount to Confirm:</td>
+                <td style="font-weight:700; color:#38bdf8; text-align:right; padding-right:0.5rem; font-size:1.15rem;">₹${(parseFloat(attempt.AmountPaid) || 0).toLocaleString("en-IN")}</td>
               </tr>
             </table>
 

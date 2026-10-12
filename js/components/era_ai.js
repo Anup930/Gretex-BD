@@ -20,6 +20,23 @@ const EraAiComponent = (function () {
   let isAnalyzing = false;
 
   async function render(container) {
+    // Auto-repair any assistant messages in history where a chart was expected or mentioned
+    let currentStore = (typeof BillDeskDataStore !== "undefined" && BillDeskDataStore.isLoaded)
+      ? BillDeskDataStore.getData()
+      : null;
+    if (currentStore && currentStore.billCycles) {
+      chatHistory.forEach((msg, idx) => {
+        if (msg.role === "assistant" && (!msg.chart || !msg.chart.values || msg.chart.values.length === 0)) {
+          let prevUserMsg = idx > 0 ? chatHistory[idx - 1] : null;
+          let userQ = prevUserMsg && prevUserMsg.role === "user" ? prevUserMsg.text : "";
+          let r = (msg.text || "").toLowerCase();
+          if (r.includes("here is the chart") || r.includes("chart showing") || r.includes("niche diye chart") || /\b(chart|graph|plot)\b/i.test(userQ)) {
+            msg.chart = normalizeAndEnsureChart(null, userQ, msg.text, currentStore.billCycles, currentStore.bankAccounts);
+          }
+        }
+      });
+    }
+
     container.innerHTML = `
       <div class="era-ai-container">
         <!-- Era AI Header -->
@@ -100,9 +117,21 @@ const EraAiComponent = (function () {
     scrollToBottom();
   }
 
+  const BAR_PALETTES = [
+    "linear-gradient(90deg, #0284c7, #38bdf8)", // Cyan / Sky
+    "linear-gradient(90deg, #10b981, #34d399)", // Emerald
+    "linear-gradient(90deg, #6366f1, #818cf8)", // Indigo
+    "linear-gradient(90deg, #f59e0b, #fbbf24)", // Amber
+    "linear-gradient(90deg, #ec4899, #f472b6)", // Pink
+    "linear-gradient(90deg, #8b5cf6, #c084fc)"  // Purple
+  ];
+
   function renderMessagesHtml() {
     return chatHistory.map((msg, idx) => {
       let isUser = msg.role === "user";
+      let hasChart = Boolean(msg.chart && Array.isArray(msg.chart.values) && msg.chart.values.length > 0);
+      let chartTotal = hasChart ? Math.round(msg.chart.values.reduce((s, v) => s + (parseFloat(v) || 0), 0)) : 0;
+
       return `
         <div class="era-msg-row ${isUser ? 'user-row' : 'assistant-row'}">
           <div class="era-msg-bubble ${isUser ? 'user-bubble' : 'assistant-bubble'}">
@@ -129,9 +158,14 @@ const EraAiComponent = (function () {
             ` : ''}
 
             <!-- Dynamic Chart rendered on-the-fly -->
-            ${msg.chart && msg.chart.values && msg.chart.values.length > 0 ? `
+            ${hasChart ? `
               <div class="era-dynamic-chart-box">
-                <div class="era-chart-title">📊 ${DashboardComponent.escapeHtml(msg.chart.title || 'Dynamic Financial Chart')}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.65rem; flex-wrap:wrap; gap:0.4rem;">
+                  <div class="era-chart-title" style="margin-bottom:0;">📊 ${DashboardComponent.escapeHtml(msg.chart.title || 'Dynamic Financial Chart')}</div>
+                  <span style="font-size:0.72rem; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); padding:0.15rem 0.55rem; border-radius:999px;">
+                    Total: ₹${chartTotal.toLocaleString('en-IN')}
+                  </span>
+                </div>
                 <div class="era-chart-bars">
                   ${renderDynamicBars(msg.chart)}
                 </div>
@@ -144,17 +178,19 @@ const EraAiComponent = (function () {
   }
 
   function renderDynamicBars(chart) {
-    let max = Math.max(...chart.values, 1);
+    let cleanValues = (chart.values || []).map(v => typeof v === 'number' ? v : (parseFloat(String(v).replace(/[^0-9.-]/g, '')) || 0));
+    let max = Math.max(...cleanValues, 1);
     return chart.labels.map((lbl, i) => {
-      let val = chart.values[i] || 0;
-      let pct = Math.min(100, Math.round((val / max) * 100));
+      let val = cleanValues[i] || 0;
+      let pct = Math.min(100, Math.max(3, Math.round((val / max) * 100)));
+      let gradient = BAR_PALETTES[i % BAR_PALETTES.length];
       return `
         <div class="era-bar-row">
           <div class="era-bar-lbl" title="${DashboardComponent.escapeHtml(lbl)}">${DashboardComponent.escapeHtml(lbl)}</div>
           <div class="era-bar-track">
-            <div class="era-bar-fill" style="width: ${pct}%;"></div>
+            <div class="era-bar-fill" style="width: ${pct}%; background: ${gradient};"></div>
           </div>
-          <div class="era-bar-val">₹${typeof val === 'number' ? val.toLocaleString('en-IN') : val}</div>
+          <div class="era-bar-val">₹${Math.round(val).toLocaleString('en-IN')}</div>
         </div>
       `;
     }).join('');
@@ -298,11 +334,19 @@ const EraAiComponent = (function () {
       chatHistory.pop();
 
       if (result.success && result.data) {
+        let chartObj = normalizeAndEnsureChart(
+          result.data.chart,
+          question,
+          result.data.reply,
+          cycles,
+          accounts
+        );
+
         chatHistory.push({
           role: "assistant",
           text: result.data.reply || "Financial analysis complete.",
           kpiCards: result.data.kpiCards || [],
-          chart: result.data.chart || null,
+          chart: chartObj,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
       } else {
@@ -324,6 +368,209 @@ const EraAiComponent = (function () {
       isAnalyzing = false;
       if (container) render(container);
     }
+  }
+
+  function normalizeAndEnsureChart(rawChart, question, reply, cycles, accounts) {
+    // 1. If valid chart provided by AI, sanitize and return
+    if (rawChart && typeof rawChart === "object") {
+      if (Array.isArray(rawChart)) {
+        let labels = rawChart.map(item => String(item.label || item.name || item.date || item.key || "Item"));
+        let values = rawChart.map(item => parseFloat(String(item.value || item.amount || item.val || 0).replace(/[^0-9.-]/g, '')) || 0);
+        if (labels.length > 0 && values.some(v => v > 0)) {
+          return { title: "Financial Analytics Chart", labels: labels, values: values };
+        }
+      }
+
+      if (Array.isArray(rawChart.data)) {
+        let labels = [];
+        let values = [];
+        rawChart.data.forEach((d, idx) => {
+          if (typeof d === "object" && d !== null) {
+            labels.push(String(d.label || d.name || d.date || d.key || ("Item " + (idx + 1))));
+            values.push(parseFloat(String(d.value || d.amount || 0).replace(/[^0-9.-]/g, '')) || 0);
+          } else {
+            labels.push("Item " + (idx + 1));
+            values.push(parseFloat(String(d).replace(/[^0-9.-]/g, '')) || 0);
+          }
+        });
+        if (labels.length > 0 && values.some(v => v > 0)) {
+          return { title: rawChart.title || "Dynamic Financial Chart", labels: labels, values: values };
+        }
+      }
+
+      if (Array.isArray(rawChart.labels) && Array.isArray(rawChart.values)) {
+        let cleanLabels = rawChart.labels.map(l => String(l));
+        let cleanValues = rawChart.values.map(v => parseFloat(String(v).replace(/[^0-9.-]/g, '')) || 0);
+        if (cleanLabels.length > 0 && cleanValues.some(v => v > 0)) {
+          return { title: rawChart.title || "Dynamic Financial Chart", labels: cleanLabels, values: cleanValues };
+        }
+      }
+    }
+
+    // 2. Check if user or reply intended a chart
+    let q = (question || "").toLowerCase();
+    let r = (reply || "").toLowerCase();
+    let isChartRequested = /\b(chart|graph|plot|visual|breakdown|sow in chart|show in chart|chart banao|chart dikhao)\b/i.test(q) ||
+                           r.includes("here is the chart") || 
+                           r.includes("chart showing") || 
+                           r.includes("niche diye chart") ||
+                           r.includes("following chart");
+
+    if (!isChartRequested) return null;
+
+    // 3. Fallback: Extract directly from the reply text if the AI listed items
+    let textExtracted = extractChartFromText(reply);
+    if (textExtracted && textExtracted.labels.length > 0 && textExtracted.values.length > 0) {
+      return textExtracted;
+    }
+
+    // 4. Generate intelligent contextual chart from live cycles & financial context
+    return generateContextualChart(q, r, cycles, accounts);
+  }
+
+  function extractChartFromText(text) {
+    if (!text) return null;
+    let lines = text.split('\n');
+    let labels = [];
+    let values = [];
+    let dateGroupMap = {};
+    let currentDate = null;
+
+    lines.forEach(line => {
+      let trimmed = line.trim();
+      let dateMatch = trimmed.match(/(?:•|\*|\-|\b)(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i);
+      if (dateMatch && (trimmed.endsWith(':') || !trimmed.includes('₹'))) {
+        currentDate = dateMatch[1];
+        return;
+      }
+
+      let amtMatch = trimmed.match(/(?:₹|INR|Rs\.?)\s*([\d,]+(?:\.\d+)?)/i);
+      if (amtMatch) {
+        let num = parseFloat(amtMatch[1].replace(/,/g, ''));
+        if (num > 0) {
+          if (currentDate) {
+            dateGroupMap[currentDate] = (dateGroupMap[currentDate] || 0) + num;
+          } else {
+            let lbl = trimmed.replace(/^[•*\-\s]+/, '').split(/[-–—:]/)[0].trim();
+            if (lbl && lbl.length < 35) {
+              labels.push(lbl);
+              values.push(num);
+            }
+          }
+        }
+      }
+    });
+
+    if (Object.keys(dateGroupMap).length > 0) {
+      return {
+        title: "Bill Amounts by Due Date",
+        labels: Object.keys(dateGroupMap),
+        values: Object.values(dateGroupMap)
+      };
+    }
+
+    if (labels.length > 0 && values.length > 0) {
+      return {
+        title: "Financial Breakdown Chart",
+        labels: labels.slice(0, 8),
+        values: values.slice(0, 8)
+      };
+    }
+
+    return null;
+  }
+
+  function generateContextualChart(q, r, cycles, accounts) {
+    if (!cycles || cycles.length === 0) return null;
+
+    // Due dates breakdown
+    if (q.includes("due") || q.includes("date") || q.includes("tarikh") || r.includes("due date") || r.includes("due dates")) {
+      let dateMap = {};
+      cycles.forEach(c => {
+        let net = parseFloat(c.NetPayable || c.ActualAmount || c.ExpectedAmount) || 0;
+        if (net > 0 && c.DueDate) {
+          let dateStr = DashboardComponent.formatDate(c.DueDate);
+          dateMap[dateStr] = (dateMap[dateStr] || 0) + net;
+        }
+      });
+      let sortedDates = Object.keys(dateMap).slice(0, 8);
+      if (sortedDates.length > 0) {
+        return {
+          title: "Bill Amounts by Due Date",
+          labels: sortedDates,
+          values: sortedDates.map(d => Math.round(dateMap[d]))
+        };
+      }
+    }
+
+    // Company / entity breakdown
+    if (q.includes("company") || q.includes("entity") || q.includes("gretex") || r.includes("entity") || r.includes("company")) {
+      let compMap = {};
+      cycles.forEach(c => {
+        let net = parseFloat(c.NetPayable || c.ActualAmount || c.ExpectedAmount) || 0;
+        if (net > 0) {
+          let name = c.CompanyName || "Corporate";
+          compMap[name] = (compMap[name] || 0) + net;
+        }
+      });
+      let keys = Object.keys(compMap).sort((a,b) => compMap[b] - compMap[a]).slice(0, 6);
+      if (keys.length > 0) {
+        return {
+          title: "Corporate Entity Spend Breakdown",
+          labels: keys,
+          values: keys.map(k => Math.round(compMap[k]))
+        };
+      }
+    }
+
+    // Vendor breakdown
+    if (q.includes("vendor") || q.includes("supplier") || q.includes("payee") || r.includes("vendor")) {
+      let vendMap = {};
+      cycles.forEach(c => {
+        let net = parseFloat(c.NetPayable || c.ActualAmount || c.ExpectedAmount) || 0;
+        if (net > 0) {
+          let name = c.VendorName || "Vendor";
+          vendMap[name] = (vendMap[name] || 0) + net;
+        }
+      });
+      let keys = Object.keys(vendMap).sort((a,b) => vendMap[b] - vendMap[a]).slice(0, 6);
+      if (keys.length > 0) {
+        return {
+          title: "Top Vendor Liabilities Breakdown",
+          labels: keys,
+          values: keys.map(k => Math.round(vendMap[k]))
+        };
+      }
+    }
+
+    // Bank account breakdown
+    if ((q.includes("bank") || q.includes("account") || q.includes("liquidity") || q.includes("balance")) && accounts && accounts.length > 0) {
+      return {
+        title: "Bank Liquidity & Usable Balances",
+        labels: accounts.map(a => a.AccountLabel || a.BankName || "Bank"),
+        values: accounts.map(a => Math.round(parseFloat(a.UsableBalance) || 0))
+      };
+    }
+
+    // Default: Top bills by due date / name
+    let defaultMap = {};
+    cycles.slice(0, 8).forEach(c => {
+      let net = parseFloat(c.NetPayable || c.ActualAmount || c.ExpectedAmount) || 0;
+      if (net > 0) {
+        let label = (c.DueDate ? DashboardComponent.formatDate(c.DueDate) + ": " : "") + (c.BillName || "Bill");
+        defaultMap[label] = net;
+      }
+    });
+    let keys = Object.keys(defaultMap);
+    if (keys.length > 0) {
+      return {
+        title: "Upcoming Bill Obligations Schedule",
+        labels: keys,
+        values: keys.map(k => Math.round(defaultMap[k]))
+      };
+    }
+
+    return null;
   }
 
   function clearChat() {
