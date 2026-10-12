@@ -293,7 +293,7 @@ const RecurringComponent = (function () {
                 <div class="sch-form-row cols-2">
                   <div class="form-group">
                     <label class="form-label">Company (Paying Entity) *</label>
-                    <select id="sch-company" class="form-select" required onchange="RecurringComponent.updateDuePreview()">
+                    <select id="sch-company" class="form-select" required onchange="RecurringComponent.handleCompanyChange()">
                       <option value="">Select Company</option>
                       ${companies.map(c => `<option value="${c.CompanyID}" ${schedule && schedule.CompanyID === c.CompanyID ? "selected" : ""}>${DashboardComponent.escapeHtml(c.CompanyName)}</option>`).join("")}
                     </select>
@@ -329,7 +329,14 @@ const RecurringComponent = (function () {
                 <div class="sch-form-row cols-2">
                   <div class="form-group">
                     <label class="form-label">Accounting Entity</label>
-                    <input type="text" id="sch-accounting-entity" class="form-control" value="${schedule ? DashboardComponent.escapeHtml(schedule.AccountingEntity || "") : ""}" placeholder="e.g. Gretex Corporate Services Ltd / Unit 01" oninput="RecurringComponent.updateDuePreview()">
+                    <select id="sch-accounting-entity" class="form-select" onchange="RecurringComponent.handleAccountingEntityChange()">
+                      <option value="">Select Accounting Entity</option>
+                      ${companies.map(c => {
+                        let isSelected = schedule && (schedule.AccountingEntity === c.CompanyName || schedule.AccountingEntity === c.CompanyID);
+                        return `<option value="${DashboardComponent.escapeHtml(c.CompanyName)}" ${isSelected ? "selected" : ""}>${DashboardComponent.escapeHtml(c.CompanyName)}</option>`;
+                      }).join("")}
+                      ${schedule && schedule.AccountingEntity && !companies.some(c => c.CompanyName === schedule.AccountingEntity || c.CompanyID === schedule.AccountingEntity) ? `<option value="${DashboardComponent.escapeHtml(schedule.AccountingEntity)}" selected>${DashboardComponent.escapeHtml(schedule.AccountingEntity)}</option>` : ""}
+                    </select>
                   </div>
                   <div class="form-group">
                     <label class="form-label">Accounting Ledger</label>
@@ -1209,6 +1216,32 @@ const RecurringComponent = (function () {
     updateDuePreview();
   }
 
+  function handleCompanyChange() {
+    let compSelect = document.getElementById("sch-company");
+    let acctSelect = document.getElementById("sch-accounting-entity");
+    if (compSelect && acctSelect) {
+      let selectedText = (compSelect.options[compSelect.selectedIndex]?.text || "").trim();
+      // Auto-sync Accounting Entity to match Paying Entity if not manually changed by user
+      if (compSelect.value && (!acctSelect.value || acctSelect.dataset.userModified !== "true")) {
+        for (let i = 0; i < acctSelect.options.length; i++) {
+          if (acctSelect.options[i].value === selectedText || acctSelect.options[i].text.trim() === selectedText) {
+            acctSelect.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    updateDuePreview();
+  }
+
+  function handleAccountingEntityChange() {
+    let acctSelect = document.getElementById("sch-accounting-entity");
+    if (acctSelect) {
+      acctSelect.dataset.userModified = "true";
+    }
+    updateDuePreview();
+  }
+
   function handleLocationChange() {
     let locSelect = document.getElementById("sch-work-location");
     let cityInput = document.getElementById("sch-city-name");
@@ -1244,6 +1277,8 @@ const RecurringComponent = (function () {
     saveSchedule: saveSchedule,
     generateCycle: generateCycle,
     generateUniqueId: generateUniqueId,
+    handleCompanyChange: handleCompanyChange,
+    handleAccountingEntityChange: handleAccountingEntityChange,
     handleLocationChange: handleLocationChange,
     onCityInputChange: onCityInputChange,
     openImportModal: openImportModal,
