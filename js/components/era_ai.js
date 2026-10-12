@@ -7,6 +7,27 @@
 const EraAiComponent = (function () {
   const VERCEL_AI_ENDPOINT = "https://gretex-bd.vercel.app/api/ask-gemini";
 
+  const LANGUAGES = [
+    { key: "English", label: "English", native: "English", flag: "🇬🇧", placeholder: "Ask Era AI... (e.g. 'What is our total spend this month?')" },
+    { key: "Hinglish", label: "Hinglish", native: "Hinglish", flag: "🇮🇳", placeholder: "Ask Era AI... (e.g. 'Gretex Corporate ka is month ka total spend kitna hai aur chart banao')" },
+    { key: "Hindi", label: "Hindi", native: "हिन्दी", flag: "🇮🇳", placeholder: "Era AI से पूछें... (उदा. 'इस महीने का कुल खर्च कितना है और चार्ट बनाओ')" },
+    { key: "Marathi", label: "Marathi", native: "मराठी", flag: "🇮🇳", placeholder: "Era AI ला विचारा... (उदा. 'या महिन्याचा एकूण खर्च किती आहे?')" },
+    { key: "Bangla", label: "Bangla", native: "বাংলা", flag: "🇮🇳", placeholder: "Era AI কে জিজ্ঞাসা করুন... (उदा. 'এই মাসের মোট খরচ কত?')" },
+    { key: "Punjabi", label: "Punjabi", native: "ਪੰਜਾਬੀ", flag: "🇮🇳", placeholder: "Era AI ਨੂੰ ਪੁੱਛੋ... (उदा. 'ਇਸ ਮਹੀਨੇ ਦਾ ਕੁੱਲ ਖਰਚਾ ਕਿੰਨਾ ਹੈ?')" }
+  ];
+
+  let selectedLanguage = localStorage.getItem("era_ai_language") || "English";
+
+  function setLanguage(langKey) {
+    let found = LANGUAGES.find(l => l.key.toLowerCase() === String(langKey).toLowerCase());
+    if (!found) return;
+    selectedLanguage = found.key;
+    localStorage.setItem("era_ai_language", found.key);
+    App.showToast(`Era AI response language set to ${found.flag} ${found.label} (${found.native})`, "info");
+    let container = document.getElementById("view-container");
+    if (container) render(container);
+  }
+
   let chatHistory = [
     {
       role: "assistant",
@@ -37,6 +58,8 @@ const EraAiComponent = (function () {
       });
     }
 
+    let activeLangObj = LANGUAGES.find(l => l.key === selectedLanguage) || LANGUAGES[0];
+
     container.innerHTML = `
       <div class="era-ai-container">
         <!-- Era AI Header -->
@@ -61,6 +84,49 @@ const EraAiComponent = (function () {
             <button class="btn btn-sm btn-secondary" onclick="EraAiComponent.clearChat()" title="Reset session">
               🔄 Clear Session
             </button>
+          </div>
+        </div>
+
+        <!-- Interactive Multi-Language Selector Strip -->
+        <div class="era-lang-strip" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem; margin-bottom: 0.85rem; padding: 0.5rem 0.85rem; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-md); box-shadow: 0 4px 15px rgba(0,0,0,0.25);">
+          <div style="display:flex; align-items:center; gap:0.45rem;">
+            <span style="font-size:0.95rem;">🌐</span>
+            <span style="font-size:0.75rem; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.04em;">
+              Response Language:
+            </span>
+            <span style="font-size:0.7rem; color:#94a3b8;">(Default: English)</span>
+          </div>
+
+          <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+            ${LANGUAGES.map(l => {
+              let isActive = selectedLanguage === l.key;
+              return `
+                <button 
+                  type="button" 
+                  class="era-lang-btn ${isActive ? 'active' : ''}" 
+                  onclick="EraAiComponent.setLanguage('${l.key}')"
+                  style="
+                    font-size:0.76rem; 
+                    padding:0.26rem 0.72rem; 
+                    border-radius:999px; 
+                    border:1px solid ${isActive ? '#38bdf8' : 'rgba(255,255,255,0.12)'}; 
+                    background:${isActive ? 'linear-gradient(135deg, rgba(2,132,199,0.4), rgba(56,189,248,0.25))' : 'rgba(255,255,255,0.04)'}; 
+                    color:${isActive ? '#38bdf8' : '#cbd5e1'}; 
+                    font-weight:${isActive ? '800' : '600'}; 
+                    cursor:pointer; 
+                    transition:all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
+                    display:flex; 
+                    align-items:center; 
+                    gap:0.35rem;
+                    box-shadow:${isActive ? '0 0 12px rgba(56,189,248,0.3)' : 'none'};
+                  "
+                >
+                  <span>${l.flag}</span>
+                  <span>${l.label}</span>
+                  <span style="font-size:0.68rem; opacity:${isActive ? '1' : '0.65'}; font-weight:500;">(${l.native})</span>
+                </button>
+              `;
+            }).join('')}
           </div>
         </div>
 
@@ -97,12 +163,21 @@ const EraAiComponent = (function () {
                   type="text" 
                   id="era-user-input" 
                   class="era-input-field" 
-                  placeholder="Ask Era AI... (e.g. 'Gretex Corporate ka is month ka total spend kitna hai aur chart bana ke do')" 
+                  placeholder="${activeLangObj.placeholder}" 
                   autocomplete="off"
                   ${isAnalyzing ? "disabled" : ""}
                 />
                 <button type="submit" class="era-send-btn" id="era-send-btn" ${isAnalyzing ? "disabled" : ""}>
-                  ${isAnalyzing ? `<span class="era-spinner"></span>` : `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`}
+                  ${isAnalyzing ? `
+                    <span class="era-spinner"></span>
+                    <span>Analyzing</span>
+                  ` : `
+                    <span>Send</span>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  `}
                 </button>
               </div>
             </form>
@@ -129,6 +204,34 @@ const EraAiComponent = (function () {
   function renderMessagesHtml() {
     return chatHistory.map((msg, idx) => {
       let isUser = msg.role === "user";
+
+      if (msg.isThinking) {
+        return `
+          <div class="era-msg-row assistant-row">
+            <div class="era-msg-bubble assistant-bubble" style="border-left-color: #818cf8;">
+              <div class="era-msg-meta">
+                <span class="era-msg-sender era-msg-sender-ai">
+                  <span class="era-ai-pulse-dot" style="background:#818cf8; box-shadow:0 0 10px #818cf8;"></span>
+                  <span>✨ Era AI Copilot</span>
+                  <span style="font-size:0.65rem; color:#818cf8; font-weight:700; background:rgba(129,140,248,0.15); border:1px solid rgba(129,140,248,0.3); padding:0.1rem 0.45rem; border-radius:999px;">
+                    Processing Query...
+                  </span>
+                </span>
+                <span class="era-msg-time">${msg.timestamp}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0.2rem;">
+                <div class="era-thinking-wave">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <div style="font-size:0.86rem; font-weight:600; color:#cbd5e1; letter-spacing:0.01em;">
+                  ${DashboardComponent.escapeHtml(msg.text)}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       let hasChart = Boolean(msg.chart && Array.isArray(msg.chart.values) && msg.chart.values.length > 0);
       let chartTotal = hasChart ? Math.round(msg.chart.values.reduce((s, v) => s + (parseFloat(v) || 0), 0)) : 0;
 
@@ -136,7 +239,16 @@ const EraAiComponent = (function () {
         <div class="era-msg-row ${isUser ? 'user-row' : 'assistant-row'}">
           <div class="era-msg-bubble ${isUser ? 'user-bubble' : 'assistant-bubble'}">
             <div class="era-msg-meta">
-              <span class="era-msg-sender">${isUser ? 'You' : '✨ Era AI Financial Analyst'}</span>
+              <span class="era-msg-sender ${isUser ? 'era-msg-sender-user' : 'era-msg-sender-ai'}">
+                ${isUser ? `
+                  <span style="font-size:0.85rem;">👤</span>
+                  <span>You</span>
+                ` : `
+                  <span class="era-ai-pulse-dot"></span>
+                  <span>✨ Era AI Financial Analyst</span>
+                  <span style="font-size:0.65rem; color:#10b981; font-weight:700; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:0.08rem 0.45rem; border-radius:999px; letter-spacing:0.02em;">Verified Telemetry</span>
+                `}
+              </span>
               <span class="era-msg-time">${msg.timestamp}</span>
             </div>
             
@@ -317,14 +429,20 @@ const EraAiComponent = (function () {
         .slice(-6)
         .map(m => ({ role: m.role, text: m.text }));
 
+      // Prepare prompt with explicit language enforcement
+      let promptWithLang = selectedLanguage === "English"
+        ? question
+        : `[CRITICAL: Reply strictly in ${selectedLanguage}]: ${question}`;
+
       // Call Vercel Serverless Function
       let response = await fetch(VERCEL_AI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question: question,
+          question: promptWithLang,
           chatHistory: recentHistory,
-          financialContext: financialContext
+          financialContext: financialContext,
+          language: selectedLanguage
         })
       });
 
@@ -596,6 +714,7 @@ const EraAiComponent = (function () {
     render: render,
     handleSubmit: handleSubmit,
     sendPreset: sendPreset,
-    clearChat: clearChat
+    clearChat: clearChat,
+    setLanguage: setLanguage
   };
 })();
